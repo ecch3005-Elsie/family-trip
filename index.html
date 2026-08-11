@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>瓦特鎮家族｜2026 雲林小旅行</title>
+
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1F4A3D" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="瓦特鎮家族" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" href="icon-192.png" />
+
+<style>
+  html, body { margin: 0; padding: 0; background: #F3E9D2; overscroll-behavior: none; }
+  * { -webkit-tap-highlight-color: transparent; }
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+
+// ==================================================
+// Design tokens (unchanged from Phase 1)
+// ==================================================
+const COLORS = {
+  deepGreen: "#1F4A3D",
+  plantGreen: "#4C8763",
+  gold: "#E8B34A",
+  warmWhite: "#FBF6EC",
+  cream: "#F3E9D2",
+  orange: "#E4732C",
+  red: "#C24A3B",
+  ink: "#26332C",
+};
+
+// ==================================================
+// Data sources
+// ==================================================
+// 報到資料（checkedIn）：Google Sheets + Apps Script Web App — 這是唯一來源
+// 其他資料（trip-state：下一站/公告/任務/SOS）：暫時仍用 Claude Artifact Shared
+// Storage，這次 Phase 只換報到，其餘功能維持原樣、不動。
+const WEBAPP_URL =
+  "https://script.google.com/macros/s/AKfycbwFIRzaQr73MpHkzCByJT7OgvCfKRM93MWJl9Rc9aJcU9Ebw8oSHfYN_fgVtHXmUNkCSA/exec";
+const TRIP_KEY = "trip-state";
+const POLL_MS = 4000;
+
+const FAMILY = [
+  { id: 1, name: "Walter", initial: "W", sheetId: "walter" },
+  { id: 2, name: "文", initial: "文", sheetId: "wen" },
+  { id: 3, name: "艷", initial: "艷", sheetId: "yan" },
+  { id: 4, name: "Money", initial: "M", sheetId: "money" },
+  { id: 5, name: "享", initial: "享", sheetId: "xiang" },
+  { id: 6, name: "心", initial: "心", sheetId: "xin" },
+  { id: 7, name: "肉粽", initial: "肉", sheetId: "rouzong" },
+  { id: 8, name: "庭", initial: "庭", sheetId: "ting" },
+  { id: 9, name: "呈", initial: "呈", sheetId: "cheng" },
+];
+
+// ---- Google Sheet helpers ----
+// GET returns { ok, members: [{ id, name, checkedIn, updatedAt }, ...] }
+async function fetchMembers() {
+  const res = await fetch(WEBAPP_URL, { method: "GET" });
+  if (!res.ok) throw new Error("GET failed: " + res.status);
+  const data = await res.json();
+  if (!data || !data.ok || !Array.isArray(data.members)) throw new Error("bad payload");
+  return data.members;
+}
+
+// POST body sent as text/plain on purpose — avoids a CORS preflight (OPTIONS)
+// request, which Apps Script Web Apps don't handle. The Apps Script side still
+// reads it as JSON via JSON.parse(e.postData.contents).
+async function postToSheet(body) {
+  const res = await fetch(WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("POST failed: " + res.status);
+  const data = await res.json();
+  if (!data || !data.ok) throw new Error("bad payload");
+  return data;
+}
+
+function isTruthy(v) {
+  return v === true || v === "TRUE" || v === "true" || v === 1;
+}
+
+const DEFAULT_TRIP = {
+  stage: "gathering", // gathering -> departed -> arrived -> completed
+  nextStop: "",
+  nextTime: "",
+  tasks: { photo: false, food: false, dayComplete: false, safeArrival: false },
+  announcements: [], // { id, level: normal|important|urgent, text, ts }
+  sos: [], // { id, personId, personName, type, ts }
+};
+
+const STAGE_LABEL = {
+  gathering: { text: "集合中", icon: "🟢" },
+  departed: { text: "前往下一站", icon: "🏍️" },
+  arrived: { text: "停留中", icon: "📍" },
+  completed: { text: "今日行程完成", icon: "✓" },
+};
+
+const TASK_DEFS = [
+  { key: "photo", label: "家族合照", icon: "📸", doneLabel: "家族合照完成", cta: "📸 我們拍好了！" },
+  { key: "food", label: "今日美食", icon: "🍜", doneLabel: "今日美食完成", cta: "🍜 吃飽啦！" },
+  { key: "dayComplete", label: "完成今日行程", icon: "🌄", doneLabel: "今日行程完成", cta: "🌄 完成啦！" },
+  { key: "safeArrival", label: "平安抵達住宿", icon: "🏠", doneLabel: "平安抵達住宿", cta: "🏠 平安抵達！" },
+];
+
+const SOS_OPTIONS = [
+  { key: "breakdown", label: "機車故障", icon: "🏍️" },
+  { key: "fuel", label: "需要加油", icon: "⛽" },
+  { key: "lost", label: "我迷路了", icon: "📍" },
+  { key: "hurt", label: "身體不舒服", icon: "🩹" },
+  { key: "car", label: "車輛問題", icon: "🚗" },
+  { key: "help", label: "需要大家幫忙", icon: "📞" },
+];
+
+const ANNOUNCEMENT_LEVELS = {
+  normal: { label: "一般", color: COLORS.plantGreen, bg: "#E4F1E1" },
+  important: { label: "重要", color: "#B8861F", bg: "#FBF0D6" },
+  urgent: { label: "緊急", color: COLORS.red, bg: "#F8E0DB" },
+};
+
+const LOCATIONS = [
+  { type: "集合地點", icon: "📍", name: "旗山早餐店", desc: "8:30 準時集合，記得吃早餐再出發！", configured: true },
+  { type: "景點", icon: "🌿", name: "", desc: "", configured: false },
+  { type: "餐廳", icon: "🍜", name: "", desc: "", configured: false },
+  { type: "住宿", icon: "🏠", name: "", desc: "", configured: false },
+  { type: "下一站", icon: "🏍️", name: "", desc: "", configured: false },
+];
+
+const ACHIEVEMENT_DEFS = [
+  { key: "allGather", label: "全員到齊", icon: "🎉", check: (ctx) => ctx.checkedCount === 9 },
+  { key: "together", label: "全家一起出發", icon: "❤️", check: (ctx) => ctx.trip.stage !== "gathering" },
+  { key: "firstStop", label: "第一站完成", icon: "🏍️", check: (ctx) => ctx.trip.stage === "arrived" || ctx.trip.stage === "completed" },
+  { key: "photo", label: "家族合照", icon: "📸", check: (ctx) => ctx.trip.tasks.photo },
+  { key: "food", label: "今日美食", icon: "🍜", check: (ctx) => ctx.trip.tasks.food },
+  { key: "dayComplete", label: "今日旅程完成", icon: "🌄", check: (ctx) => ctx.trip.tasks.dayComplete },
+];
+
+const PROGRESS_STEPS = [
+  { key: "gather", label: "集合", done: (ctx) => ctx.checkedCount === 9 },
+  { key: "depart", label: "出發", done: (ctx) => ctx.trip.stage !== "gathering" },
+  { key: "firstStop", label: "第一站", done: (ctx) => ctx.trip.stage === "arrived" || ctx.trip.stage === "completed" },
+  { key: "dayComplete", label: "完成", done: (ctx) => ctx.trip.tasks.dayComplete || ctx.trip.stage === "completed" },
+];
+
+const SAFETY_TIPS = ["🪖 安全帽戴好", "🌧️ 山區可能下雨", "⛽ 確認油量", "🏍️ 保持車距", "❤️ 不趕路，平安最重要"];
+
+// ==================================================
+// Shared UI pieces (Phase 1, unchanged)
+// ==================================================
+function HeroBanner() {
+  return (
+    <div
+      style={{
+        position: "relative",
+        height: 190,
+        overflow: "hidden",
+        background: `linear-gradient(180deg, ${COLORS.deepGreen} 0%, ${COLORS.plantGreen} 62%, ${COLORS.gold} 100%)`,
+      }}
+    >
+      <svg
+        viewBox="0 0 400 190"
+        preserveAspectRatio="none"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      >
+        <circle cx="336" cy="40" r="22" fill="#FCEFC6" opacity="0.9" />
+        <circle cx="336" cy="40" r="22" fill="none" stroke="#FFF7DC" strokeWidth="1" opacity="0.5" />
+        <path d="M0 130 L60 90 L120 125 L180 80 L240 128 L300 95 L400 130 L400 190 L0 190 Z" fill="#164235" opacity="0.55" />
+        <path d="M0 150 L80 110 L150 150 L230 105 L320 150 L400 120 L400 190 L0 190 Z" fill="#0F332A" opacity="0.85" />
+        <path d="M0 190 L150 150 L260 150 L400 190 Z" fill="#3A2E22" />
+        <path d="M150 150 L260 150" stroke="#F3E9D2" strokeWidth="2" strokeDasharray="8 8" opacity="0.6" />
+      </svg>
+      <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, textAlign: "center", fontSize: 30 }}>🛵💨</div>
+      <div style={{ position: "absolute", top: 16, left: 18, right: 18, color: COLORS.warmWhite }}>
+        <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1, opacity: 0.9 }}>瓦特鎮家族</div>
+        <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+          2026 雲林二日機車小旅行
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginTop: 6, opacity: 0.95 }}>中秋・跟家人一起出發</div>
+      </div>
+    </div>
+  );
+}
+
+function InfoStrip() {
+  return (
+    <div style={{ display: "flex", gap: 10, margin: "-22px 16px 0", position: "relative", zIndex: 2 }}>
+      <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
+        <div style={{ fontSize: 12, color: "#8A7A5C", fontWeight: 600 }}>集合地點</div>
+        <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>📍 旗山早餐店</div>
+      </div>
+      <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
+        <div style={{ fontSize: 12, color: "#8A7A5C", fontWeight: 600 }}>集合時間</div>
+        <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>⏰ 上午 8:30</div>
+      </div>
+    </div>
+  );
+}
+
+function CheckInGauge({ count, total }) {
+  const r = 54;
+  const c = 2 * Math.PI * r;
+  const frac = count / total;
+  return (
+    <div style={{ position: "relative", width: 132, height: 132, margin: "0 auto" }}>
+      <svg width="132" height="132" viewBox="0 0 132 132">
+        <circle cx="66" cy="66" r={r} fill="none" stroke="#EAE0C6" strokeWidth="12" />
+        <circle
+          cx="66" cy="66" r={r} fill="none" stroke={COLORS.plantGreen} strokeWidth="12" strokeLinecap="round"
+          strokeDasharray={`${c * frac} ${c}`} transform="rotate(-90 66 66)"
+          style={{ transition: "stroke-dasharray 0.5s ease" }}
+        />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 26, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{count}/{total}</div>
+        <div style={{ fontSize: 11, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>已報到</div>
+      </div>
+    </div>
+  );
+}
+
+function Avatar({ person }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 62 }}>
+      <div
+        style={{
+          position: "relative", width: 52, height: 52, borderRadius: "50%", display: "flex",
+          alignItems: "center", justifyContent: "center",
+          fontSize: person.initial && person.initial.length > 1 ? 15 : 20,
+          fontWeight: 800, color: COLORS.deepGreen,
+          background: person.checkedIn ? "#E4F1E1" : "#F0EBDD",
+          border: person.checkedIn ? `2px solid ${COLORS.plantGreen}` : "2px solid #DCD3B8",
+          opacity: person.checkedIn ? 1 : 0.75, transition: "all 0.3s ease",
+        }}
+      >
+        {person.initial}
+        {person.checkedIn ? (
+          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: COLORS.plantGreen, color: "white", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>✓</div>
+        ) : (
+          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: "#C9BE9F", color: "white", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>⋯</div>
+        )}
+      </div>
+      <div style={{ fontSize: 12, marginTop: 6, fontWeight: person.self ? 800 : 600, color: person.checkedIn ? COLORS.deepGreen : "#9A8E6E" }}>
+        {person.name}
+      </div>
+    </div>
+  );
+}
+
+function Card({ children, style }) {
+  return (
+    <div
+      style={{
+        margin: "16px 16px 0",
+        background: COLORS.warmWhite,
+        borderRadius: 20,
+        padding: "16px 16px",
+        boxShadow: "0 6px 18px rgba(31,74,61,0.10)",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ==================================================
+// Identity picker (Phase 1, unchanged)
+// ==================================================
+function IdentityPicker({ onPick }) {
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <Card style={{ padding: "24px 18px", textAlign: "center" }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>你是哪一位家人？</div>
+        <div style={{ fontSize: 12, color: "#8A7A5C", marginTop: 6 }}>選好之後，記得把網址列的連結收藏起來，下次直接用</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 18, marginTop: 22, justifyItems: "center" }}>
+          {FAMILY.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onPick(p.id)}
+              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", width: 62 }}
+            >
+              <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: p.initial && p.initial.length > 1 ? 15 : 20, fontWeight: 800, color: COLORS.deepGreen, background: "#F0EBDD", border: "2px solid #DCD3B8" }}>
+                {p.initial}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 6, fontWeight: 600, color: COLORS.ink }}>{p.name}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ==================================================
+// Phase 2: 下一個重要時間 / 下一站 / 目前旅程狀態 / 全員到齊
+// ==================================================
+function NextUpCard({ trip, editable, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [stop, setStop] = useState(trip.nextStop);
+  const [time, setTime] = useState(trip.nextTime);
+
+  useEffect(() => {
+    if (!editing) {
+      setStop(trip.nextStop);
+      setTime(trip.nextTime);
+    }
+  }, [trip.nextStop, trip.nextTime, editing]);
+
+  return (
+    <Card>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>⏰ 下一個重要時間</div>
+        {editable && !editing && (
+          <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: COLORS.plantGreen, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            設定
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <input
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            placeholder="例如 10:30 出發"
+            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 14 }}
+          />
+          <input
+            value={stop}
+            onChange={(e) => setStop(e.target.value)}
+            placeholder="例如 華山・草嶺"
+            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 14 }}
+          />
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button
+              onClick={() => { onSave({ nextStop: stop, nextTime: time }); setEditing(false); }}
+              style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", background: COLORS.plantGreen, color: "white", fontWeight: 700, cursor: "pointer" }}
+            >
+              儲存
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid #DCD3B8", background: "none", color: "#8A7A5C", fontWeight: 700, cursor: "pointer" }}
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen }}>{trip.nextTime || "時間待確認"}</div>
+          <div style={{ fontSize: 14, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>
+            📍 {trip.nextStop || "下一站待設定"}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function JourneyStageCard({ trip, allHere, onDepart }) {
+  const s = STAGE_LABEL[trip.stage];
+  return (
+    <Card>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>目前旅程狀態</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>
+        {s.icon} {s.text}
+      </div>
+
+      {allHere && trip.stage === "gathering" && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 15, marginBottom: 10 }}>
+            🎉 全員到齊！
+          </div>
+          <button
+            onClick={onDepart}
+            style={{
+              width: "100%", padding: "14px 0", borderRadius: 16, border: "none", fontSize: 17, fontWeight: 800,
+              color: "white", background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
+              boxShadow: "0 10px 22px rgba(31,74,61,0.30)", cursor: "pointer",
+            }}
+          >
+            🏍️ 出發囉！
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ProgressTimeline({ ctx }) {
+  return (
+    <Card>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C", marginBottom: 10 }}>Day 1 旅程進度</div>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        {PROGRESS_STEPS.map((step, i) => {
+          const done = step.done(ctx);
+          const prevDone = i === 0 ? true : PROGRESS_STEPS[i - 1].done(ctx);
+          const current = !done && prevDone;
+          return (
+            <div key={step.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+              <div style={{ fontSize: 18 }}>{done ? "🟢" : current ? "🟡" : "⚪"}</div>
+              <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600, color: done ? COLORS.deepGreen : "#9A8E6E", textAlign: "center" }}>
+                {step.label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function SafetyCard() {
+  return (
+    <Card>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>騎車小提醒</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {SAFETY_TIPS.map((t) => (
+          <div key={t} style={{ fontSize: 12, fontWeight: 600, color: COLORS.ink, background: COLORS.cream, borderRadius: 999, padding: "6px 12px" }}>
+            {t}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ==================================================
+// Phase 5: 家族公告
+// ==================================================
+function AnnouncementSection({ announcements, onPost }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [level, setLevel] = useState("normal");
+  const latest = announcements[0];
+
+  return (
+    <Card>
+      <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>📢 家族公告</div>
+        <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
+      </button>
+
+      {latest ? (
+        <div style={{ marginTop: 10, background: ANNOUNCEMENT_LEVELS[latest.level].bg, borderRadius: 12, padding: "10px 12px" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[latest.level].color }}>
+            {ANNOUNCEMENT_LEVELS[latest.level].label}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{latest.text}</div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 10, fontSize: 13, color: "#9A8E6E" }}>目前沒有公告</div>
+      )}
+
+      {open && (
+        <div style={{ marginTop: 14 }}>
+          {announcements.length > 1 &&
+            announcements.slice(1).map((a) => (
+              <div key={a.id} style={{ marginTop: 8, background: ANNOUNCEMENT_LEVELS[a.level].bg, borderRadius: 12, padding: "10px 12px" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[a.level].color }}>{ANNOUNCEMENT_LEVELS[a.level].label}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{a.text}</div>
+              </div>
+            ))}
+
+          <div style={{ marginTop: 14, borderTop: "1px solid #E9DFC4", paddingTop: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#8A7A5C", marginBottom: 6 }}>發布新公告</div>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="輸入公告內容"
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 14, boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              {Object.entries(ANNOUNCEMENT_LEVELS).map(([k, v]) => (
+                <button
+                  key={k}
+                  onClick={() => setLevel(k)}
+                  style={{
+                    flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    border: level === k ? `2px solid ${v.color}` : "1px solid #DCD3B8",
+                    background: level === k ? v.bg : "white", color: v.color,
+                  }}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => { if (text.trim()) { onPost(text.trim(), level); setText(""); setLevel("normal"); } }}
+              style={{ width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 10, border: "none", background: COLORS.deepGreen, color: "white", fontWeight: 700, cursor: "pointer" }}
+            >
+              發布公告
+            </button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ==================================================
+// Phase 7: 需要幫忙
+// ==================================================
+function SosSection({ sos, myId, myName, onRequest, onResolve }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {sos.length > 0 && (
+        <Card style={{ background: "#FBE7E2", boxShadow: "0 6px 16px rgba(194,74,59,0.25)" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.red }}>🆘 有家人需要幫忙</div>
+          {sos.map((s) => (
+            <div key={s.id} style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.ink }}>
+                {s.personName}：{SOS_OPTIONS.find((o) => o.key === s.type)?.icon} {SOS_OPTIONS.find((o) => o.key === s.type)?.label}
+              </div>
+              <button
+                onClick={() => onResolve(s.id)}
+                style={{ background: "none", border: `1px solid ${COLORS.red}`, color: COLORS.red, borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+              >
+                ✅ 已解決
+              </button>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      <Card>
+        <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>🆘 需要幫忙</div>
+          <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
+        </button>
+        {open && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 12 }}>
+            {SOS_OPTIONS.map((o) => (
+              <button
+                key={o.key}
+                onClick={() => onRequest(o.key)}
+                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 13, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}
+              >
+                {o.icon} {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
+  );
+}
+
+// ==================================================
+// Main 旅程 (journey/home) tab — combines Phase 1 + 2 + 5 + 6 + 7
+// ==================================================
+function JourneyHome() {
+  const [myId, setMyId] = useState(null);
+  const [identityLoading, setIdentityLoading] = useState(true);
+  const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false })));
+  const [loaded, setLoaded] = useState(false); // true once the Google Sheet has been read successfully at least once
+  const [trip, setTrip] = useState(DEFAULT_TRIP);
+  const [syncState, setSyncState] = useState("loading");
+  const pollRef = useRef(null);
+  const seededTripRef = useRef(false);
+
+  const applyMembers = (members) => {
+    setPeople((prev) =>
+      prev.map((p) => {
+        const row = members.find((m) => m.id === p.sheetId);
+        return row ? { ...p, checkedIn: isTruthy(row.checkedIn) } : p;
+      })
+    );
+  };
+
+  const fetchAll = async () => {
+    let ok = true;
+
+    // Google Sheet is the ONLY source of truth for check-in. On failure we
+    // never invent numbers or reset anything — keep whatever was last
+    // successfully loaded and let the next 4-second poll retry.
+    try {
+      const members = await fetchMembers();
+      applyMembers(members);
+      setLoaded(true);
+    } catch (e) {
+      ok = false;
+    }
+
+    // Trip state (next stop / announcements / tasks / SOS) is unrelated to
+    // this phase and stays exactly as before — Claude Artifact Shared Storage.
+    try {
+      const res = await window.storage.get(TRIP_KEY, true);
+      const data = res ? JSON.parse(res.value) : null;
+      if (data) {
+        setTrip({ ...DEFAULT_TRIP, ...data, tasks: { ...DEFAULT_TRIP.tasks, ...(data.tasks || {}) } });
+      } else if (!seededTripRef.current) {
+        seededTripRef.current = true;
+        await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
+      }
+    } catch (e) {
+      if (!seededTripRef.current) {
+        seededTripRef.current = true;
+        try {
+          await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
+        } catch (e2) {}
+      }
+    }
+
+    setSyncState(ok ? "ok" : "error");
+  };
+
+  const writeTrip = async (next) => {
+    setTrip(next); // instant feedback
+    try {
+      await window.storage.set(TRIP_KEY, JSON.stringify(next), true);
+    } catch (e) {}
+  };
+
+  // Identity now comes from a per-person link (?who=xiang), because neither
+  // Google Apps Script nor the free Claude plan can remember "which phone is
+  // this" across visits. Each family member should bookmark their own link.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const who = params.get("who");
+    if (who) {
+      const match = FAMILY.find((p) => p.sheetId === who);
+      if (match) setMyId(match.id);
+    }
+    setIdentityLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (myId === null) return;
+    fetchAll();
+    pollRef.current = setInterval(fetchAll, POLL_MS);
+    return () => clearInterval(pollRef.current);
+  }, [myId]);
+
+  const handlePickIdentity = (id) => {
+    setMyId(id);
+    const person = FAMILY.find((p) => p.id === id);
+    if (person) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("who", person.sheetId);
+        window.history.replaceState({}, "", url.toString());
+      } catch (e) {}
+    }
+  };
+
+  const handleCheckIn = async () => {
+    const me = FAMILY.find((p) => p.id === myId);
+    if (!me) return;
+    setPeople((prev) => prev.map((p) => (p.id === myId ? { ...p, checkedIn: true } : p))); // instant feedback
+    try {
+      await postToSheet({ action: "checkin", id: me.sheetId });
+      setSyncState("ok");
+      fetchAll(); // pull the confirmed sheet state right away
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const handleResetCheckin = async () => {
+    setConfirmingReset(false);
+    try {
+      await postToSheet({ action: "resetAll" });
+      setSyncState("ok");
+      await fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  if (identityLoading) {
+    return (
+      <div style={{ paddingBottom: 96 }}>
+        <HeroBanner />
+        <div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C", fontSize: 13 }}>載入中…</div>
+      </div>
+    );
+  }
+
+  if (myId === null) return <IdentityPicker onPick={handlePickIdentity} />;
+
+  const checkedCount = people.filter((p) => p.checkedIn).length;
+  const self = people.find((p) => p.id === myId);
+  const remaining = 9 - checkedCount;
+  const allHere = checkedCount === 9;
+  const ctx = { checkedCount, trip };
+
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <InfoStrip />
+
+      <Card>
+        {!loaded ? (
+          <div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C", fontSize: 13, fontWeight: 600 }}>
+            {syncState === "error" ? "尚未連線，同步失敗，稍後自動重試" : "同步中，正在連接 Google 試算表…"}
+          </div>
+        ) : (
+          <>
+            <CheckInGauge count={checkedCount} total={9} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 16, marginTop: 20, justifyItems: "center" }}>
+              {people.map((p) => (
+                <Avatar key={p.id} person={{ ...p, self: p.id === myId }} />
+              ))}
+            </div>
+
+            <button
+              onClick={handleCheckIn}
+              disabled={self.checkedIn}
+              style={{
+                width: "100%", marginTop: 22, padding: "16px 0", borderRadius: 18, border: "none", fontSize: 18, fontWeight: 800, color: "white",
+                background: self.checkedIn ? "linear-gradient(135deg, #9CC0A8, #7FAF8C)" : `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
+                boxShadow: self.checkedIn ? "none" : "0 10px 22px rgba(31,74,61,0.35)", transition: "all 0.25s ease", cursor: self.checkedIn ? "default" : "pointer",
+              }}
+            >
+              {self.checkedIn ? "✓ 已報到" : "👋 我到啦！"}
+            </button>
+
+            <div style={{ textAlign: "center", marginTop: 14, fontSize: 13, color: "#8A7A5C", fontWeight: 500, lineHeight: 1.6 }}>
+              {remaining === 0 ? (
+                <span style={{ color: COLORS.orange, fontWeight: 700 }}>🎉 全員到齊，準備出發！</span>
+              ) : (
+                <>還有 {remaining} 位家人尚未抵達<br />大家陸續抵達中，等等還沒到的家人～</>
+              )}
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: syncState === "error" ? COLORS.orange : "#B0A480", fontWeight: 500 }}>
+              {syncState === "error" ? "同步失敗，稍後自動重試" : "🟢 已同步"}
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: 10 }}>
+              {confirmingReset ? (
+                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  <button
+                    onClick={handleResetCheckin}
+                    style={{ fontSize: 11, fontWeight: 700, color: "white", background: COLORS.red, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
+                  >
+                    再按一次，確定重置全部報到
+                  </button>
+                  <button
+                    onClick={() => setConfirmingReset(false)}
+                    style={{ fontSize: 11, fontWeight: 700, color: "#8A7A5C", background: "none", border: "1px solid #DCD3B8", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
+                  >
+                    取消
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingReset(true)}
+                  style={{ fontSize: 11, color: "#B0A480", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
+                >
+                  重置全部報到人數
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </Card>
+
+      <JourneyStageCard trip={trip} allHere={allHere} onDepart={() => writeTrip({ ...trip, stage: "departed" })} />
+      <NextUpCard trip={trip} editable onSave={(patch) => writeTrip({ ...trip, ...patch })} />
+      <ProgressTimeline ctx={ctx} />
+      <AnnouncementSection
+        announcements={trip.announcements}
+        onPost={(text, level) => {
+          const a = { id: Date.now(), level, text, ts: Date.now() };
+          writeTrip({ ...trip, announcements: [a, ...trip.announcements].slice(0, 20) });
+        }}
+      />
+      <SosSection
+        sos={trip.sos}
+        myId={myId}
+        myName={self.name}
+        onRequest={(type) => {
+          const s = { id: Date.now(), personId: myId, personName: self.name, type, ts: Date.now() };
+          writeTrip({ ...trip, sos: [...trip.sos, s] });
+        }}
+        onResolve={(id) => writeTrip({ ...trip, sos: trip.sos.filter((s) => s.id !== id) })}
+      />
+      <SafetyCard />
+
+      <div style={{ margin: "16px 16px 0", padding: "14px 16px", borderRadius: 16, background: `linear-gradient(135deg, ${COLORS.gold}, #F2C463)`, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 6px 14px rgba(232,179,74,0.35)" }}>
+        <div style={{ fontSize: 22 }}>🥮</div>
+        <div style={{ fontSize: 13, color: "#4A3617", fontWeight: 600, lineHeight: 1.5 }}>
+          中秋連假機車小旅行，記得帶好安全帽和防曬，路上互相照應喔！
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================================================
+// Phase 3: 地圖
+// ==================================================
+function MapTab() {
+  const [openIdx, setOpenIdx] = useState(null);
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <div style={{ margin: "18px 16px 0", fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>📍 旅行地圖</div>
+      {LOCATIONS.map((loc, i) => (
+        <Card key={loc.type} style={{ padding: "14px 16px" }}>
+          <button onClick={() => setOpenIdx(openIdx === i ? null : i)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 20 }}>{loc.icon}</div>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 11, color: "#8A7A5C", fontWeight: 600 }}>{loc.type}</div>
+                <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: 700 }}>{loc.configured ? loc.name : "待設定"}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{openIdx === i ? "收合" : "詳情"}</div>
+          </button>
+          {openIdx === i && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #E9DFC4" }}>
+              {loc.configured ? (
+                <>
+                  <div style={{ fontSize: 13, color: COLORS.ink, lineHeight: 1.6 }}>{loc.desc}</div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.name)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "inline-block", marginTop: 10, fontSize: 13, fontWeight: 700, color: "white", background: COLORS.deepGreen, borderRadius: 999, padding: "8px 16px", textDecoration: "none" }}
+                  >
+                    📍 開啟手機地圖
+                  </a>
+                </>
+              ) : (
+                <div style={{ fontSize: 13, color: "#9A8E6E" }}>這裡目前是 Prototype，尚未接上正式資料服務。</div>
+              )}
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ==================================================
+// Phase 4: 任務
+// ==================================================
+function TaskTab({ trip, checkedCount, onToggle }) {
+  const autoTasks = [
+    { label: "全員集合", icon: "🟢", done: checkedCount === 9 },
+    { label: "第一站抵達", icon: "📍", done: trip.stage === "arrived" || trip.stage === "completed" },
+  ];
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <div style={{ margin: "18px 16px 0", fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>🎯 今日任務</div>
+
+      <Card>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>自動追蹤</div>
+        {autoTasks.map((t) => (
+          <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
+            <div style={{ fontSize: 18 }}>{t.done ? "✅" : "⬜"}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: t.done ? COLORS.deepGreen : COLORS.ink }}>{t.icon} {t.label}</div>
+          </div>
+        ))}
+      </Card>
+
+      <Card>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>今天要一起完成</div>
+        {TASK_DEFS.map((t) => {
+          const done = trip.tasks[t.key];
+          return (
+            <div key={t.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #F0EAD8" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: done ? COLORS.deepGreen : COLORS.ink }}>
+                {t.icon} {done ? t.doneLabel : t.label}
+              </div>
+              {done ? (
+                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.plantGreen }}>✓ 完成啦！</div>
+              ) : (
+                <button
+                  onClick={() => onToggle(t.key)}
+                  style={{ fontSize: 12, fontWeight: 700, color: "white", background: COLORS.plantGreen, border: "none", borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}
+                >
+                  {t.cta}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </Card>
+    </div>
+  );
+}
+
+// ==================================================
+// Phase 8: 成就
+// ==================================================
+function AchievementTab({ ctx }) {
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <div style={{ margin: "18px 16px 0", fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>🏆 旅程成就</div>
+      <Card>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 18, justifyItems: "center" }}>
+          {ACHIEVEMENT_DEFS.map((a) => {
+            const unlocked = a.check(ctx);
+            return (
+              <div key={a.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 78 }}>
+                <div
+                  style={{
+                    width: 60, height: 60, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
+                    background: unlocked ? "#FDF1D6" : "#F0EBDD",
+                    border: unlocked ? `2px solid ${COLORS.gold}` : "2px solid #DCD3B8",
+                    opacity: unlocked ? 1 : 0.4,
+                  }}
+                >
+                  {a.icon}
+                </div>
+                <div style={{ fontSize: 11, marginTop: 6, fontWeight: 700, textAlign: "center", color: unlocked ? COLORS.deepGreen : "#9A8E6E" }}>
+                  {a.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ==================================================
+// App shell
+// ==================================================
+const TABS = [
+  { key: "journey", label: "旅程", icon: "🏍️" },
+  { key: "map", label: "地圖", icon: "📍" },
+  { key: "quest", label: "任務", icon: "🎯" },
+  { key: "badge", label: "成就", icon: "🏆" },
+];
+
+function App() {
+  const [tab, setTab] = useState("journey");
+  // Shared trip state lifted here too, so 任務/成就 tabs can read the same data
+  // without duplicating storage logic — each tab does its own light polling.
+  const [trip, setTrip] = useState(DEFAULT_TRIP);
+  const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false })));
+  const pollRef = useRef(null);
+
+  const fetchShared = async () => {
+    try {
+      const res = await window.storage.get(TRIP_KEY, true);
+      const data = res ? JSON.parse(res.value) : null;
+      if (data) setTrip({ ...DEFAULT_TRIP, ...data, tasks: { ...DEFAULT_TRIP.tasks, ...(data.tasks || {}) } });
+    } catch (e) {}
+    try {
+      const members = await fetchMembers();
+      setPeople((prev) =>
+        prev.map((p) => {
+          const row = members.find((m) => m.id === p.sheetId);
+          return row ? { ...p, checkedIn: isTruthy(row.checkedIn) } : p;
+        })
+      );
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (tab === "quest" || tab === "badge") {
+      fetchShared();
+      pollRef.current = setInterval(fetchShared, POLL_MS);
+      return () => clearInterval(pollRef.current);
+    }
+  }, [tab]);
+
+  const writeTrip = async (next) => {
+    setTrip(next);
+    try {
+      await window.storage.set(TRIP_KEY, JSON.stringify(next), true);
+    } catch (e) {}
+  };
+
+  const checkedCount = people.filter((p) => p.checkedIn).length;
+
+  return (
+    <div
+      style={{
+        maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream,
+        fontFamily: '"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif',
+        position: "relative",
+      }}
+    >
+      {tab === "journey" && <JourneyHome />}
+      {tab === "map" && <MapTab />}
+      {tab === "quest" && (
+        <TaskTab
+          trip={trip}
+          checkedCount={checkedCount}
+          onToggle={(key) => writeTrip({ ...trip, tasks: { ...trip.tasks, [key]: true } })}
+        />
+      )}
+      {tab === "badge" && <AchievementTab ctx={{ checkedCount, trip }} />}
+
+      <div
+        style={{
+          position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 420,
+          background: COLORS.warmWhite, borderTop: "1px solid #E9DFC4", display: "flex", justifyContent: "space-around",
+          padding: "10px 4px 14px", boxShadow: "0 -6px 18px rgba(31,74,61,0.10)",
+        }}
+      >
+        {TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{ background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "2px 8px" }}
+            >
+              <span style={{ fontSize: 20, opacity: active ? 1 : 0.45 }}>{t.icon}</span>
+              <span style={{ fontSize: 11, fontWeight: active ? 800 : 500, color: active ? COLORS.deepGreen : "#B0A480" }}>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
