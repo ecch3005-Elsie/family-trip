@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#1F4A3D" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="瓦特鎮家族" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -65,13 +66,13 @@ const FAMILY = [
 ];
 
 // ---- Google Sheet helpers ----
-// GET returns { ok, members: [{ id, name, checkedIn, updatedAt }, ...] }
-async function fetchMembers() {
+// GET returns { ok, members: [...], feedback: [...] }
+async function fetchSheetData() {
   const res = await fetch(WEBAPP_URL, { method: "GET" });
   if (!res.ok) throw new Error("GET failed: " + res.status);
   const data = await res.json();
   if (!data || !data.ok || !Array.isArray(data.members)) throw new Error("bad payload");
-  return data.members;
+  return { members: data.members, feedback: Array.isArray(data.feedback) ? data.feedback : [] };
 }
 
 // POST body sent as text/plain on purpose — avoids a CORS preflight (OPTIONS)
@@ -123,6 +124,18 @@ const SOS_OPTIONS = [
   { key: "hurt", label: "身體不舒服", icon: "🩹" },
   { key: "car", label: "車輛問題", icon: "🚗" },
   { key: "help", label: "需要大家幫忙", icon: "📞" },
+];
+
+// Phase 2 — 輕量、非緊急的家人回饋，跟上面的 SOS 分開：不同顏色、不會自動消失，
+// 需要有人按「知道了」才會收掉。跟報到一樣，資料存在同一個 Google Sheet
+// （多一個 Feedback 分頁），這樣才能真正跨手機看到。
+const FEEDBACK_TYPES = [
+  { key: "toilet", label: "上廁所", icon: "🚻" },
+  { key: "fuel", label: "快沒油了", icon: "⛽" },
+  { key: "food", label: "想找地方吃東西", icon: "🍽️" },
+  { key: "rest", label: "想休息一下", icon: "😴" },
+  { key: "photo", label: "想停下來拍照", icon: "📸" },
+  { key: "drink", label: "想買飲料", icon: "🥤" },
 ];
 
 const ANNOUNCEMENT_LEVELS = {
@@ -562,6 +575,54 @@ function SosSection({ sos, myId, myName, onRequest, onResolve }) {
   );
 }
 
+// Phase 2 — 輕量、非緊急的家人回饋。刻意跟上面的 SOS 分開設計：
+// 金黃色（不是紅色）、不會自動消失、要有人按「知道了」才會收掉。
+function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {feedback.length > 0 && (
+        <Card style={{ background: "#FBF0D6", boxShadow: "0 6px 16px rgba(232,179,74,0.25)" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#B8861F" }}>💬 家人想說一下</div>
+          {feedback.map((f) => (
+            <div key={f.id} style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.ink }}>
+                {f.personName}：{FEEDBACK_TYPES.find((o) => o.key === f.type)?.icon} {FEEDBACK_TYPES.find((o) => o.key === f.type)?.label}
+              </div>
+              <button
+                onClick={() => onAcknowledge(f.id)}
+                style={{ background: "none", border: "1px solid #B8861F", color: "#B8861F", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+              >
+                知道了
+              </button>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      <Card>
+        <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>💬 跟家人說一下</div>
+          <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
+        </button>
+        {open && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 12 }}>
+            {FEEDBACK_TYPES.map((o) => (
+              <button
+                key={o.key}
+                onClick={() => { onRequest(o.key); setOpen(false); }}
+                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 13, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}
+              >
+                {o.icon} {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
+  );
+}
+
 // ==================================================
 // Main 旅程 (journey/home) tab — combines Phase 1 + 2 + 5 + 6 + 7
 // ==================================================
@@ -570,6 +631,7 @@ function JourneyHome() {
   const [identityLoading, setIdentityLoading] = useState(true);
   const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false })));
   const [loaded, setLoaded] = useState(false); // true once the Google Sheet has been read successfully at least once
+  const [feedback, setFeedback] = useState([]); // Phase 2 — 輕量、非緊急的家人回饋
   const [trip, setTrip] = useState(DEFAULT_TRIP);
   const [syncState, setSyncState] = useState("loading");
   const pollRef = useRef(null);
@@ -587,12 +649,13 @@ function JourneyHome() {
   const fetchAll = async () => {
     let ok = true;
 
-    // Google Sheet is the ONLY source of truth for check-in. On failure we
-    // never invent numbers or reset anything — keep whatever was last
-    // successfully loaded and let the next 4-second poll retry.
+    // Google Sheet is the ONLY source of truth for check-in + 輕量回饋. On
+    // failure we never invent numbers or reset anything — keep whatever was
+    // last successfully loaded and let the next 4-second poll retry.
     try {
-      const members = await fetchMembers();
+      const { members, feedback: fb } = await fetchSheetData();
       applyMembers(members);
+      setFeedback(fb);
       setLoaded(true);
     } catch (e) {
       ok = false;
@@ -619,6 +682,26 @@ function JourneyHome() {
     }
 
     setSyncState(ok ? "ok" : "error");
+  };
+
+  const handleAddFeedback = async (type) => {
+    const me = FAMILY.find((p) => p.id === myId);
+    if (!me) return;
+    try {
+      await postToSheet({ action: "addFeedback", personId: me.sheetId, personName: me.name, type });
+      fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  const handleResolveFeedback = async (id) => {
+    setFeedback((prev) => prev.filter((f) => String(f.id) !== String(id))); // instant feedback
+    try {
+      await postToSheet({ action: "resolveFeedback", id });
+    } catch (e) {
+      setSyncState("error");
+    }
   };
 
   const writeTrip = async (next) => {
@@ -706,6 +789,8 @@ function JourneyHome() {
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
       <InfoStrip />
+
+      <FeedbackSection feedback={feedback} onRequest={handleAddFeedback} onAcknowledge={handleResolveFeedback} />
 
       <Card>
         {!loaded ? (
@@ -963,7 +1048,7 @@ function App() {
       if (data) setTrip({ ...DEFAULT_TRIP, ...data, tasks: { ...DEFAULT_TRIP.tasks, ...(data.tasks || {}) } });
     } catch (e) {}
     try {
-      const members = await fetchMembers();
+      const { members } = await fetchSheetData();
       setPeople((prev) =>
         prev.map((p) => {
           const row = members.find((m) => m.id === p.sheetId);
