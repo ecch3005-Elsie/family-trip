@@ -153,7 +153,6 @@ const DEFAULT_TRIP = {
   nextTime: "",
   tasks: { photo: false, food: false, dayComplete: false, safeArrival: false },
   announcements: [], // { id, level: normal|important|urgent, text, ts }
-  sos: [], // { id, personId, personName, type, ts }
 };
 
 const STAGE_LABEL = {
@@ -170,22 +169,12 @@ const TASK_DEFS = [
   { key: "safeArrival", label: "平安抵達住宿", icon: "🏠", doneLabel: "平安抵達住宿", cta: "🏠 平安抵達！" },
 ];
 
-const SOS_OPTIONS = [
-  { key: "breakdown", label: "機車故障", icon: "🏍️" },
-  { key: "fuel", label: "需要加油", icon: "⛽" },
-  { key: "lost", label: "我迷路了", icon: "📍" },
-  { key: "hurt", label: "身體不舒服", icon: "🩹" },
-  { key: "car", label: "車輛問題", icon: "🚗" },
-  { key: "help", label: "需要大家幫忙", icon: "📞" },
-];
-
-// Phase 2 — 輕量、非緊急的家人回饋，跟上面的 SOS 分開：不同顏色、不會自動消失，
-// 需要有人按「知道了」才會收掉。跟報到一樣，資料存在同一個 Google Sheet
-// （多一個 Feedback 分頁），這樣才能真正跨手機看到。
+// Phase 2 — 輕量家人回饋，跟原本的緊急 SOS 已經合併（機車故障/迷路/加油這些
+// 太少用，且分開兩區使用者容易混淆），現在統一在這裡：
 const FEEDBACK_TYPES = [
   { key: "toilet", label: "上廁所", icon: "🚻" },
   { key: "fuel", label: "快沒油了", icon: "⛽" },
-  { key: "food", label: "想找地方吃東西", icon: "🍽️" },
+  { key: "help", label: "需要大家幫忙", icon: "📞" },
   { key: "rest", label: "想休息一下", icon: "😴" },
   { key: "photo", label: "想停下來拍照", icon: "📸" },
   { key: "drink", label: "想買飲料", icon: "🥤" },
@@ -226,7 +215,7 @@ const PROGRESS_STEPS = [
   { key: "dayComplete", label: "完成", done: (ctx) => ctx.trip.tasks.dayComplete || ctx.trip.stage === "completed" },
 ];
 
-const SAFETY_TIPS = ["🪖 安全帽戴好", "🌧️ 山區可能下雨", "⛽ 確認油量", "🏍️ 保持車距", "❤️ 不趕路，平安最重要"];
+const SAFETY_TIPS = ["🪖 安全帽戴好", "🌧️ 山區可能下雨", "🧥 備好兩件式雨衣", "⛽ 確認油量", "🏍️ 保持車距", "❤️ 不趕路，平安最重要"];
 
 // ==================================================
 // Shared UI pieces (Phase 1, unchanged)
@@ -280,7 +269,8 @@ function InfoStrip() {
   );
 }
 
-function CheckInGauge({ count, total }) {
+function CheckInGauge({ count, total, label }) {
+  const gaugeLabel = label || "已報到";
   const r = 54;
   const c = 2 * Math.PI * r;
   const frac = count / total;
@@ -296,7 +286,7 @@ function CheckInGauge({ count, total }) {
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <div style={{ fontSize: 26, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{count}/{total}</div>
-        <div style={{ fontSize: 11, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>已報到</div>
+        <div style={{ fontSize: 11, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>{gaugeLabel}</div>
       </div>
     </div>
   );
@@ -643,57 +633,8 @@ function AnnouncementSection({ announcements, onPost }) {
   );
 }
 
-// ==================================================
-// Phase 7: 需要幫忙
-// ==================================================
-function SosSection({ sos, myId, myName, onRequest, onResolve }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      {sos.length > 0 && (
-        <Card style={{ background: "#FBE7E2", boxShadow: "0 6px 16px rgba(194,74,59,0.25)" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.red }}>🆘 有家人需要幫忙</div>
-          {sos.map((s) => (
-            <div key={s.id} style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.ink }}>
-                {s.personName}：{SOS_OPTIONS.find((o) => o.key === s.type)?.icon} {SOS_OPTIONS.find((o) => o.key === s.type)?.label}
-              </div>
-              <button
-                onClick={() => onResolve(s.id)}
-                style={{ background: "none", border: `1px solid ${COLORS.red}`, color: COLORS.red, borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-              >
-                ✅ 已解決
-              </button>
-            </div>
-          ))}
-        </Card>
-      )}
-
-      <Card>
-        <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>🆘 需要幫忙</div>
-          <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
-        </button>
-        {open && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 12 }}>
-            {SOS_OPTIONS.map((o) => (
-              <button
-                key={o.key}
-                onClick={() => onRequest(o.key)}
-                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 13, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}
-              >
-                {o.icon} {o.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </Card>
-    </>
-  );
-}
-
-// Phase 2 — 輕量、非緊急的家人回饋。刻意跟上面的 SOS 分開設計：
-// 金黃色（不是紅色）、不會自動消失、要有人按「知道了」才會收掉。
+// Phase 2 — 輕量家人回饋。金黃色、不會自動消失，要有人按「知道了」才會收掉。
+// 「需要大家幫忙」已經合併進這裡（原本獨立的 SOS 區塊拿掉了）。
 function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
   const [open, setOpen] = useState(false);
   return (
@@ -741,164 +682,122 @@ function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
 }
 
 // ==================================================
-// Main 旅程 (journey/home) tab — combines Phase 1 + 2 + 5 + 6 + 7
+// 報到 — 現在獨立成自己的分頁，出發報到 ＋ 到家報到 兩組
 // ==================================================
-function JourneyHome() {
-  const [myId, setMyId] = useState(null);
-  const [identityLoading, setIdentityLoading] = useState(true);
-  const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false })));
-  const [loaded, setLoaded] = useState(false); // true once the Google Sheet has been read successfully at least once
-  const [feedback, setFeedback] = useState([]); // Phase 2 — 輕量、非緊急的家人回饋
-  const [trip, setTrip] = useState(DEFAULT_TRIP);
-  const [syncState, setSyncState] = useState("loading");
-  const pollRef = useRef(null);
-  const seededTripRef = useRef(false);
-
-  const applyMembers = (members) => {
-    setPeople((prev) =>
-      prev.map((p) => {
-        const row = members.find((m) => m.id === p.sheetId);
-        return row ? { ...p, checkedIn: isTruthy(row.checkedIn) } : p;
-      })
-    );
-  };
-
-  const fetchAll = async () => {
-    let ok = true;
-
-    // Google Sheet is the ONLY source of truth for check-in + 輕量回饋. On
-    // failure we never invent numbers or reset anything — keep whatever was
-    // last successfully loaded and let the next 4-second poll retry.
-    try {
-      const { members, feedback: fb } = await fetchSheetData();
-      applyMembers(members);
-      setFeedback(fb);
-      setLoaded(true);
-    } catch (e) {
-      ok = false;
-    }
-
-    // Trip state (next stop / announcements / tasks / SOS) is unrelated to
-    // this phase and stays exactly as before — Claude Artifact Shared Storage.
-    try {
-      const res = await window.storage.get(TRIP_KEY, true);
-      const data = res ? JSON.parse(res.value) : null;
-      if (data) {
-        setTrip({ ...DEFAULT_TRIP, ...data, tasks: { ...DEFAULT_TRIP.tasks, ...(data.tasks || {}) } });
-      } else if (!seededTripRef.current) {
-        seededTripRef.current = true;
-        await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
-      }
-    } catch (e) {
-      if (!seededTripRef.current) {
-        seededTripRef.current = true;
-        try {
-          await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
-        } catch (e2) {}
-      }
-    }
-
-    setSyncState(ok ? "ok" : "error");
-  };
-
-  const handleAddFeedback = async (type) => {
-    const me = FAMILY.find((p) => p.id === myId);
-    if (!me) return;
-    try {
-      await postToSheet({ action: "addFeedback", personId: me.sheetId, personName: me.name, type });
-      fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const handleResolveFeedback = async (id) => {
-    setFeedback((prev) => prev.filter((f) => String(f.id) !== String(id))); // instant feedback
-    try {
-      await postToSheet({ action: "resolveFeedback", id });
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const writeTrip = async (next) => {
-    setTrip(next); // instant feedback
-    try {
-      await window.storage.set(TRIP_KEY, JSON.stringify(next), true);
-    } catch (e) {}
-  };
-
-  // Identity now comes from a per-person link (?who=xiang), because neither
-  // Google Apps Script nor the free Claude plan can remember "which phone is
-  // this" across visits. Each family member should bookmark their own link.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const who = params.get("who");
-    if (who) {
-      const match = FAMILY.find((p) => p.sheetId === who);
-      if (match) setMyId(match.id);
-    }
-    setIdentityLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (myId === null) return;
-    fetchAll();
-    pollRef.current = setInterval(fetchAll, POLL_MS);
-    return () => clearInterval(pollRef.current);
-  }, [myId]);
-
-  const handlePickIdentity = (id) => {
-    setMyId(id);
-    const person = FAMILY.find((p) => p.id === id);
-    if (person) {
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set("who", person.sheetId);
-        window.history.replaceState({}, "", url.toString());
-      } catch (e) {}
-    }
-  };
-
-  const handleCheckIn = async () => {
-    const me = FAMILY.find((p) => p.id === myId);
-    if (!me) return;
-    setPeople((prev) => prev.map((p) => (p.id === myId ? { ...p, checkedIn: true } : p))); // instant feedback
-    try {
-      await postToSheet({ action: "checkin", id: me.sheetId });
-      setSyncState("ok");
-      fetchAll(); // pull the confirmed sheet state right away
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
+function CheckinBlock({
+  icon, title, gaugeLabel, people, doneField, myId,
+  buttonPendingLabel, buttonDoneLabel, remainingLabel, allDoneLabel,
+  onCheckIn, onReset, syncState, resetLabel,
+}) {
   const [confirmingReset, setConfirmingReset] = useState(false);
-  const handleResetCheckin = async () => {
-    setConfirmingReset(false);
-    try {
-      await postToSheet({ action: "resetAll" });
-      setSyncState("ok");
-      await fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  if (identityLoading) {
-    return (
-      <div style={{ paddingBottom: 96 }}>
-        <HeroBanner />
-        <div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C", fontSize: 13 }}>載入中…</div>
-      </div>
-    );
-  }
-
-  if (myId === null) return <IdentityPicker onPick={handlePickIdentity} />;
-
-  const checkedCount = people.filter((p) => p.checkedIn).length;
+  const count = people.filter((p) => p[doneField]).length;
   const self = people.find((p) => p.id === myId);
-  const remaining = 9 - checkedCount;
+  const remaining = 9 - count;
+  const selfDone = self ? self[doneField] : false;
+
+  return (
+    <Card>
+      <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.deepGreen, marginBottom: 10 }}>{icon} {title}</div>
+      <CheckInGauge count={count} total={9} label={gaugeLabel} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 16, marginTop: 20, justifyItems: "center" }}>
+        {people.map((p) => (
+          <Avatar key={p.id} person={{ ...p, checkedIn: p[doneField], self: p.id === myId }} />
+        ))}
+      </div>
+
+      <button
+        onClick={onCheckIn}
+        disabled={selfDone}
+        style={{
+          width: "100%", marginTop: 22, padding: "16px 0", borderRadius: 18, border: "none", fontSize: 18, fontWeight: 800, color: "white",
+          background: selfDone ? "linear-gradient(135deg, #9CC0A8, #7FAF8C)" : `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
+          boxShadow: selfDone ? "none" : "0 10px 22px rgba(31,74,61,0.35)", transition: "all 0.25s ease", cursor: selfDone ? "default" : "pointer",
+        }}
+      >
+        {selfDone ? buttonDoneLabel : buttonPendingLabel}
+      </button>
+
+      <div style={{ textAlign: "center", marginTop: 14, fontSize: 13, color: "#8A7A5C", fontWeight: 500, lineHeight: 1.6 }}>
+        {remaining === 0 ? (
+          <span style={{ color: COLORS.orange, fontWeight: 700 }}>{allDoneLabel}</span>
+        ) : (
+          <>還有 {remaining} 位家人{remainingLabel}</>
+        )}
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: syncState === "error" ? COLORS.orange : "#B0A480", fontWeight: 500 }}>
+        {syncState === "error" ? "同步失敗，稍後自動重試" : "🟢 已同步"}
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 10 }}>
+        {confirmingReset ? (
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button
+              onClick={() => { onReset(); setConfirmingReset(false); }}
+              style={{ fontSize: 11, fontWeight: 700, color: "white", background: COLORS.red, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
+            >
+              再按一次，確定{resetLabel}
+            </button>
+            <button
+              onClick={() => setConfirmingReset(false)}
+              style={{ fontSize: 11, fontWeight: 700, color: "#8A7A5C", background: "none", border: "1px solid #DCD3B8", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
+            >
+              取消
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingReset(true)}
+            style={{ fontSize: 11, color: "#B0A480", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
+          >
+            {resetLabel}
+          </button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function CheckinTab({ people, myId, loaded, syncState, onCheckIn, onCheckInHome, onResetCheckin, onResetCheckinHome }) {
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <InfoStrip />
+
+      {!loaded ? (
+        <Card>
+          <div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C", fontSize: 13, fontWeight: 600 }}>
+            {syncState === "error" ? "尚未連線，同步失敗，稍後自動重試" : "同步中，正在連接 Google 試算表…"}
+          </div>
+        </Card>
+      ) : (
+        <>
+          <CheckinBlock
+            icon="🚀" title="出發報到" gaugeLabel="已報到"
+            people={people} doneField="checkedIn" myId={myId}
+            buttonPendingLabel="👋 我到啦！" buttonDoneLabel="✓ 已報到"
+            remainingLabel="尚未抵達" allDoneLabel="🎉 全員到齊，準備出發！"
+            onCheckIn={onCheckIn} onReset={onResetCheckin} syncState={syncState}
+            resetLabel="重置全部報到人數"
+          />
+          <CheckinBlock
+            icon="🏠" title="到家報到" gaugeLabel="已到家"
+            people={people} doneField="arrivedHome" myId={myId}
+            buttonPendingLabel="🏠 到家啦！" buttonDoneLabel="✓ 已到家"
+            remainingLabel="尚未到家" allDoneLabel="🎉 全員到家，平安旅程圓滿完成！"
+            onCheckIn={onCheckInHome} onReset={onResetCheckinHome} syncState={syncState}
+            resetLabel="重置全部到家狀態"
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ==================================================
+// 旅程 — 現在是純畫面呈現，資料／身份都從 App 上層傳進來
+// ==================================================
+function JourneyHome({ people, feedback, trip, myId, checkedCount, onRequestFeedback, onAcknowledgeFeedback, writeTrip }) {
   const allHere = checkedCount === 9;
   const ctx = { checkedCount, trip };
 
@@ -907,74 +806,7 @@ function JourneyHome() {
       <HeroBanner />
       <InfoStrip />
 
-      <FeedbackSection feedback={feedback} onRequest={handleAddFeedback} onAcknowledge={handleResolveFeedback} />
-
-      <Card>
-        {!loaded ? (
-          <div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C", fontSize: 13, fontWeight: 600 }}>
-            {syncState === "error" ? "尚未連線，同步失敗，稍後自動重試" : "同步中，正在連接 Google 試算表…"}
-          </div>
-        ) : (
-          <>
-            <CheckInGauge count={checkedCount} total={9} />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 16, marginTop: 20, justifyItems: "center" }}>
-              {people.map((p) => (
-                <Avatar key={p.id} person={{ ...p, self: p.id === myId }} />
-              ))}
-            </div>
-
-            <button
-              onClick={handleCheckIn}
-              disabled={self.checkedIn}
-              style={{
-                width: "100%", marginTop: 22, padding: "16px 0", borderRadius: 18, border: "none", fontSize: 18, fontWeight: 800, color: "white",
-                background: self.checkedIn ? "linear-gradient(135deg, #9CC0A8, #7FAF8C)" : `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
-                boxShadow: self.checkedIn ? "none" : "0 10px 22px rgba(31,74,61,0.35)", transition: "all 0.25s ease", cursor: self.checkedIn ? "default" : "pointer",
-              }}
-            >
-              {self.checkedIn ? "✓ 已報到" : "👋 我到啦！"}
-            </button>
-
-            <div style={{ textAlign: "center", marginTop: 14, fontSize: 13, color: "#8A7A5C", fontWeight: 500, lineHeight: 1.6 }}>
-              {remaining === 0 ? (
-                <span style={{ color: COLORS.orange, fontWeight: 700 }}>🎉 全員到齊，準備出發！</span>
-              ) : (
-                <>還有 {remaining} 位家人尚未抵達<br />大家陸續抵達中，等等還沒到的家人～</>
-              )}
-            </div>
-
-            <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: syncState === "error" ? COLORS.orange : "#B0A480", fontWeight: 500 }}>
-              {syncState === "error" ? "同步失敗，稍後自動重試" : "🟢 已同步"}
-            </div>
-
-            <div style={{ textAlign: "center", marginTop: 10 }}>
-              {confirmingReset ? (
-                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <button
-                    onClick={handleResetCheckin}
-                    style={{ fontSize: 11, fontWeight: 700, color: "white", background: COLORS.red, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
-                  >
-                    再按一次，確定重置全部報到
-                  </button>
-                  <button
-                    onClick={() => setConfirmingReset(false)}
-                    style={{ fontSize: 11, fontWeight: 700, color: "#8A7A5C", background: "none", border: "1px solid #DCD3B8", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
-                  >
-                    取消
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmingReset(true)}
-                  style={{ fontSize: 11, color: "#B0A480", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
-                >
-                  重置全部報到人數
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </Card>
+      <FeedbackSection feedback={feedback} onRequest={onRequestFeedback} onAcknowledge={onAcknowledgeFeedback} />
 
       <JourneyStageCard trip={trip} allHere={allHere} onDepart={() => writeTrip({ ...trip, stage: "departed" })} />
       <NextUpCard trip={trip} editable onSave={(patch) => writeTrip({ ...trip, ...patch })} />
@@ -985,16 +817,6 @@ function JourneyHome() {
           const a = { id: Date.now(), level, text, ts: Date.now() };
           writeTrip({ ...trip, announcements: [a, ...trip.announcements].slice(0, 20) });
         }}
-      />
-      <SosSection
-        sos={trip.sos}
-        myId={myId}
-        myName={self.name}
-        onRequest={(type) => {
-          const s = { id: Date.now(), personId: myId, personName: self.name, type, ts: Date.now() };
-          writeTrip({ ...trip, sos: [...trip.sos, s] });
-        }}
-        onResolve={(id) => writeTrip({ ...trip, sos: trip.sos.filter((s) => s.id !== id) })}
       />
       <WeatherCard />
       <SafetyCard />
@@ -1172,9 +994,11 @@ function AchievementTab({ ctx }) {
 }
 
 // ==================================================
-// App shell
+// App shell — 身份辨識、資料抓取／輪詢、寫入動作全部集中在這裡，
+// 5 個分頁都從這裡拿資料，不用各自重複一套邏輯。
 // ==================================================
 const TABS = [
+  { key: "checkin", label: "報到", icon: "👋" },
   { key: "journey", label: "旅程", icon: "🏍️" },
   { key: "map", label: "地圖", icon: "📍" },
   { key: "quest", label: "任務", icon: "🎯" },
@@ -1182,46 +1006,186 @@ const TABS = [
 ];
 
 function App() {
-  const [tab, setTab] = useState("journey");
-  // Shared trip state lifted here too, so 任務/成就 tabs can read the same data
-  // without duplicating storage logic — each tab does its own light polling.
+  const [tab, setTab] = useState("checkin");
+  const [myId, setMyId] = useState(null);
+  const [identityLoading, setIdentityLoading] = useState(true);
+  const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false, arrivedHome: false })));
+  const [loaded, setLoaded] = useState(false); // true once the Google Sheet has been read successfully at least once
+  const [feedback, setFeedback] = useState([]);
   const [trip, setTrip] = useState(DEFAULT_TRIP);
-  const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false })));
+  const [syncState, setSyncState] = useState("loading");
   const pollRef = useRef(null);
+  const seededTripRef = useRef(false);
 
-  const fetchShared = async () => {
+  const applyMembers = (members) => {
+    setPeople((prev) =>
+      prev.map((p) => {
+        const row = members.find((m) => m.id === p.sheetId);
+        return row ? { ...p, checkedIn: isTruthy(row.checkedIn), arrivedHome: isTruthy(row.arrivedHome) } : p;
+      })
+    );
+  };
+
+  const fetchAll = async () => {
+    let ok = true;
+
+    // Google Sheet is the ONLY source of truth for 報到／到家／輕量回饋. On
+    // failure we never invent numbers or reset anything — keep whatever was
+    // last successfully loaded and let the next 4-second poll retry.
+    try {
+      const { members, feedback: fb } = await fetchSheetData();
+      applyMembers(members);
+      setFeedback(fb);
+      setLoaded(true);
+    } catch (e) {
+      ok = false;
+    }
+
+    // Trip state (次一站/公告/任務) 跟這次改動無關，維持原樣 — Claude Artifact
+    // Shared Storage（在 GitHub Pages 上本來就不會真的同步，屬已知限制）。
     try {
       const res = await window.storage.get(TRIP_KEY, true);
       const data = res ? JSON.parse(res.value) : null;
-      if (data) setTrip({ ...DEFAULT_TRIP, ...data, tasks: { ...DEFAULT_TRIP.tasks, ...(data.tasks || {}) } });
-    } catch (e) {}
-    try {
-      const { members } = await fetchSheetData();
-      setPeople((prev) =>
-        prev.map((p) => {
-          const row = members.find((m) => m.id === p.sheetId);
-          return row ? { ...p, checkedIn: isTruthy(row.checkedIn) } : p;
-        })
-      );
-    } catch (e) {}
+      if (data) {
+        setTrip({ ...DEFAULT_TRIP, ...data, tasks: { ...DEFAULT_TRIP.tasks, ...(data.tasks || {}) } });
+      } else if (!seededTripRef.current) {
+        seededTripRef.current = true;
+        await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
+      }
+    } catch (e) {
+      if (!seededTripRef.current) {
+        seededTripRef.current = true;
+        try {
+          await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
+        } catch (e2) {}
+      }
+    }
+
+    setSyncState(ok ? "ok" : "error");
   };
 
+  // Identity comes from a per-person link (?who=xiang) — bookmark once, works
+  // forever, no login and no storage needed.
   useEffect(() => {
-    if (tab === "quest" || tab === "badge") {
-      fetchShared();
-      pollRef.current = setInterval(fetchShared, POLL_MS);
-      return () => clearInterval(pollRef.current);
+    const params = new URLSearchParams(window.location.search);
+    const who = params.get("who");
+    if (who) {
+      const match = FAMILY.find((p) => p.sheetId === who);
+      if (match) setMyId(match.id);
     }
-  }, [tab]);
+    setIdentityLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (myId === null) return;
+    fetchAll();
+    pollRef.current = setInterval(fetchAll, POLL_MS);
+    return () => clearInterval(pollRef.current);
+  }, [myId]);
+
+  const handlePickIdentity = (id) => {
+    setMyId(id);
+    const person = FAMILY.find((p) => p.id === id);
+    if (person) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("who", person.sheetId);
+        window.history.replaceState({}, "", url.toString());
+      } catch (e) {}
+    }
+  };
+
+  const handleCheckIn = async () => {
+    const me = FAMILY.find((p) => p.id === myId);
+    if (!me) return;
+    setPeople((prev) => prev.map((p) => (p.id === myId ? { ...p, checkedIn: true } : p))); // instant feedback
+    try {
+      await postToSheet({ action: "checkin", id: me.sheetId });
+      setSyncState("ok");
+      fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  const handleCheckInHome = async () => {
+    const me = FAMILY.find((p) => p.id === myId);
+    if (!me) return;
+    setPeople((prev) => prev.map((p) => (p.id === myId ? { ...p, arrivedHome: true } : p))); // instant feedback
+    try {
+      await postToSheet({ action: "checkinHome", id: me.sheetId });
+      setSyncState("ok");
+      fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  const handleResetCheckin = async () => {
+    try {
+      await postToSheet({ action: "resetAll" });
+      setSyncState("ok");
+      await fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  const handleResetCheckinHome = async () => {
+    try {
+      await postToSheet({ action: "resetAllHome" });
+      setSyncState("ok");
+      await fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  const handleAddFeedback = async (type) => {
+    const me = FAMILY.find((p) => p.id === myId);
+    if (!me) return;
+    try {
+      await postToSheet({ action: "addFeedback", personId: me.sheetId, personName: me.name, type });
+      fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
+  const handleResolveFeedback = async (id) => {
+    setFeedback((prev) => prev.filter((f) => String(f.id) !== String(id))); // instant feedback
+    try {
+      await postToSheet({ action: "resolveFeedback", id });
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
 
   const writeTrip = async (next) => {
-    setTrip(next);
+    setTrip(next); // instant feedback
     try {
       await window.storage.set(TRIP_KEY, JSON.stringify(next), true);
     } catch (e) {}
   };
 
   const checkedCount = people.filter((p) => p.checkedIn).length;
+
+  if (identityLoading) {
+    return (
+      <div style={{ maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream }}>
+        <HeroBanner />
+        <div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C", fontSize: 13 }}>載入中…</div>
+      </div>
+    );
+  }
+
+  if (myId === null) {
+    return (
+      <div style={{ maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream }}>
+        <IdentityPicker onPick={handlePickIdentity} />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1231,7 +1195,30 @@ function App() {
         position: "relative",
       }}
     >
-      {tab === "journey" && <JourneyHome />}
+      {tab === "checkin" && (
+        <CheckinTab
+          people={people}
+          myId={myId}
+          loaded={loaded}
+          syncState={syncState}
+          onCheckIn={handleCheckIn}
+          onCheckInHome={handleCheckInHome}
+          onResetCheckin={handleResetCheckin}
+          onResetCheckinHome={handleResetCheckinHome}
+        />
+      )}
+      {tab === "journey" && (
+        <JourneyHome
+          people={people}
+          feedback={feedback}
+          trip={trip}
+          myId={myId}
+          checkedCount={checkedCount}
+          onRequestFeedback={handleAddFeedback}
+          onAcknowledgeFeedback={handleResolveFeedback}
+          writeTrip={writeTrip}
+        />
+      )}
       {tab === "map" && <MapTab />}
       {tab === "quest" && (
         <TaskTab
