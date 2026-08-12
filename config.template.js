@@ -90,6 +90,8 @@ function makeAchievementDefs() {
     { key: "photo", label: "家族合照", icon: "📸", check: (ctx) => ctx.trip.tasks.photo },
     { key: "food", label: "今日美食", icon: "🍜", check: (ctx) => ctx.trip.tasks.food },
     { key: "dayComplete", label: "今日旅程完成", icon: "🌄", check: (ctx) => ctx.trip.tasks.dayComplete },
+    { key: "safeArrival", label: "平安投宿", icon: "🏠", check: (ctx) => ctx.trip.tasks.safeArrival },
+    { key: "allHome", label: "全員到家", icon: "🌙", check: (ctx) => ctx.arrivedHomeCount === 9 },
     { key: "star", label: "今日之星", icon: "⭐", check: (ctx) => ctx.day1Result && ctx.day1Result.starPersonId === ctx.mySheetId },
   ];
 }

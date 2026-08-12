@@ -133,7 +133,7 @@ function Card({ children, style }) {
 function HeroBanner() {
   return (
     <div style={{
-      position: "relative", height: 200, overflow: "hidden",
+      position: "relative", height: 188, overflow: "hidden",
       background: `linear-gradient(180deg, ${COLORS.deepGreen} 0%, ${COLORS.plantGreen} 62%, ${COLORS.gold} 100%)`,
     }}>
       <svg viewBox="0 0 400 200" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
@@ -143,19 +143,23 @@ function HeroBanner() {
         <path d="M150 160 L260 160" stroke="#F3E9D2" strokeWidth="2" strokeDasharray="8 8" opacity="0.6" />
       </svg>
       <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", fontSize: 28 }}>🛵💨</div>
-      <div style={{ position: "absolute", top: 12, left: 16, right: 16, color: COLORS.warmWhite, textAlign: "center" }}>
-        <div style={{
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          width: 72, height: 72, borderRadius: "50%", background: "white",
-          border: `3px solid ${COLORS.gold}`, boxShadow: "0 4px 14px rgba(0,0,0,0.25)", overflow: "hidden",
-        }}>
-          <img src="logo.png" alt="瓦特鎮家族" style={{ width: 58, height: 58, objectFit: "contain", display: "block" }} />
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+      <div style={{ position: "absolute", top: 14, left: 16, right: 16, color: COLORS.warmWhite }}>
+        <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.25, textAlign: "center", textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
           {TRIP.title}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4, opacity: 0.95 }}>{TRIP.subtitle1}</div>
-        <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2, opacity: 0.9 }}>{TRIP.subtitle2}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 10 }}>
+          <div style={{
+            flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+            width: 56, height: 56, borderRadius: "50%", background: "white",
+            border: `3px solid ${COLORS.gold}`, boxShadow: "0 4px 14px rgba(0,0,0,0.25)", overflow: "hidden",
+          }}>
+            <img src="logo.png" alt="瓦特鎮家族" style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />
+          </div>
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.98 }}>{TRIP.subtitle1}</div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2, opacity: 0.92 }}>{TRIP.subtitle2}</div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -165,12 +169,12 @@ function InfoStrip() {
   return (
     <div style={{ display: "flex", gap: 10, margin: "-22px 16px 0", position: "relative", zIndex: 2 }}>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
-        <SectionTitle>集合地點</SectionTitle>
-        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>📍 {TRIP.meeting.place}</div>
+        <SectionTitle>📍 集合地點</SectionTitle>
+        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{TRIP.meeting.place}</div>
       </div>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
-        <SectionTitle>集合時間</SectionTitle>
-        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>⏰ {TRIP.meeting.time}</div>
+        <SectionTitle>⏰ 集合時間</SectionTitle>
+        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{TRIP.meeting.time}</div>
       </div>
     </div>
   );
@@ -248,6 +252,12 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
 
   if (day1Result) {
     const star = FAMILY.find((p) => p.sheetId === day1Result.starPersonId);
+    const ranked = guesses.map((g) => {
+      const actualMin = new Date(day1Result.arrivalTime).getHours() * 60 + new Date(day1Result.arrivalTime).getMinutes();
+      const kmErr = Math.abs(g.guessKm - day1Result.totalKm);
+      const timeErr = Math.abs((Number(String(g.guessTime).split(":")[0]) * 60 + Number(String(g.guessTime).split(":")[1] || 0)) - actualMin);
+      return { ...g, score: kmErr + timeErr / 10 };
+    }).sort((a, b) => a.score - b.score);
     return (
       <Card style={{ background: "#FDF1D6", border: `2px solid ${COLORS.gold}` }}>
         <SectionTitle style={{ color: COLORS.deepGreen, fontWeight: 800 }}>⭐ 今日之星出爐！</SectionTitle>
@@ -255,6 +265,34 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
         <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
           實際總公里：<strong>{day1Result.totalKm.toFixed(1)} km</strong><br />
           抵達 {TRIP.day1AccommodationName}：<strong>{formatTime(day1Result.arrivalTime)}</strong>
+        </div>
+        {ranked.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #E8D5A0" }}>
+            <SectionTitle style={{ marginBottom: 8 }}>🏅 猜測排行榜</SectionTitle>
+            {ranked.map((g, i) => (
+              <div key={g.personId} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.ink, padding: "5px 0", fontWeight: g.personId === day1Result.starPersonId ? 800 : 600 }}>
+                <span>{i + 1}. {g.personName}{g.personId === day1Result.starPersonId ? " ⭐" : ""}</span>
+                <span>{g.guessKm} km · {g.guessTime}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  }
+
+  if (myGuess) {
+    return (
+      <Card>
+        <SectionTitle>🎲 出發前猜謎（已送出）</SectionTitle>
+        <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 10, lineHeight: 1.6 }}>
+          你的猜測：<strong>{myGuess.guessKm} km</strong> · <strong>{myGuess.guessTime}</strong>
+        </div>
+        <div style={{ fontSize: 13, color: "#8A7A5C", marginTop: 8 }}>
+          {guessLocked ? "已出發，等待抵達住宿揭曉答案！" : "已鎖定，送出後不可更改。出發後統一揭曉！"}
+        </div>
+        <div style={{ fontSize: 13, color: "#B0A480", marginTop: 8, textAlign: "center" }}>
+          已有 {guesses.length}/9 人猜測 · {checkedCount}/9 人報到
         </div>
       </Card>
     );
@@ -304,7 +342,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
           setSaving(false);
         }}
         style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 12, border: "none", background: COLORS.gold, color: "#4A3617", fontWeight: 800, cursor: "pointer" }}
-      >{myGuess ? "更新我的猜測" : "送出猜測"}</button>
+      >送出猜測（送出後不可改）</button>
       <div style={{ fontSize: 13, color: "#B0A480", marginTop: 8, textAlign: "center" }}>
         已有 {guesses.length}/9 人猜測 · {checkedCount}/9 人報到
       </div>
@@ -317,7 +355,7 @@ function IdentityPicker({ onPick }) {
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
       <Card style={{ padding: "24px 18px", textAlign: "center" }}>
-        <SectionTitle style={{ fontSize: 17, color: COLORS.deepGreen, fontWeight: 800 }}>你是哪一位家人？</SectionTitle>
+        <SectionTitle style={{ fontSize: 17, color: COLORS.deepGreen, fontWeight: 800 }}>👋 你是哪一位家人？</SectionTitle>
         <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 6 }}>選好之後，記得把網址列的連結收藏起來，下次直接用</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 18, marginTop: 22, justifyItems: "center" }}>
           {FAMILY.map((p) => (
@@ -400,7 +438,7 @@ function JourneyStageCard({ progress, allHere, segments, onRequestAdvance }) {
 
   return (
     <Card>
-      <SectionTitle>目前旅程狀態</SectionTitle>
+      <SectionTitle>🏍️ 目前旅程狀態</SectionTitle>
       <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>
         {finished ? "🎉 全部行程跑完了" : current ? `📍 ${current.name}` : "🟢 集合中"}
       </div>
@@ -456,7 +494,7 @@ function ProgressTimeline({ progress }) {
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <SectionTitle>旅程進度</SectionTitle>
+        <SectionTitle>🗺️ 旅程進度</SectionTitle>
         <div style={{ display: "flex", gap: 6 }}>
           {[1, 2].map((d) => (
             <button key={d} onClick={() => setDay(d)} style={{
@@ -511,7 +549,7 @@ function WeatherCard() {
 function SafetyCard() {
   return (
     <Card>
-      <SectionTitle>騎車小提醒</SectionTitle>
+      <SectionTitle>🪖 騎車小提醒</SectionTitle>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
         {SAFETY_TIPS.map((t) => <div key={t} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, background: COLORS.cream, borderRadius: 999, padding: "6px 12px" }}>{t}</div>)}
       </div>
@@ -538,7 +576,7 @@ function AnnouncementSection({ announcements, onPost }) {
       ) : <div style={{ marginTop: 10, fontSize: 15, color: "#9A8E6E" }}>目前沒有公告</div>}
       {open && (
         <div style={{ marginTop: 14 }}>
-          <SectionTitle style={{ marginBottom: 6 }}>發布新公告</SectionTitle>
+          <SectionTitle style={{ marginBottom: 6 }}>✏️ 發布新公告</SectionTitle>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="輸入公告內容"
             style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }} />
           <button onClick={() => { if (text.trim()) { onPost(text.trim(), level); setText(""); } }}
@@ -634,7 +672,7 @@ function TaskTab({ trip, progress, checkedCount, photos, myId, onToggle, onUploa
       <HeroBanner /><PageTitle>🎯 今日任務</PageTitle>
       <PhotoGallery photos={photos} myId={myId} onUploaded={onUploaded} />
       <Card>
-        <SectionTitle style={{ marginBottom: 8 }}>自動追蹤</SectionTitle>
+        <SectionTitle style={{ marginBottom: 8 }}>✨ 自動追蹤</SectionTitle>
         {autoTasks.map((t) => (
           <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
             <div>{t.done ? "✅" : "⬜"}</div>
@@ -643,7 +681,7 @@ function TaskTab({ trip, progress, checkedCount, photos, myId, onToggle, onUploa
         ))}
       </Card>
       <Card>
-        <SectionTitle style={{ marginBottom: 8 }}>今天要一起完成</SectionTitle>
+        <SectionTitle style={{ marginBottom: 8 }}>🎯 今天要一起完成</SectionTitle>
         {TASK_DEFS.map((t) => {
           const done = trip.tasks[t.key];
           return (
@@ -733,7 +771,7 @@ function ReviewTab({ people, trip, progress, segments, photos, day1Result, guess
 
   const star = FAMILY.find((p) => p.sheetId === day1Result?.starPersonId);
   const totalKm = sumAllKm(segments);
-  const unlocked = ACHIEVEMENT_DEFS.filter((a) => a.check({ checkedCount: 9, trip, progress, day1Result, mySheetId: "" }));
+  const unlocked = ACHIEVEMENT_DEFS.filter((a) => a.check({ checkedCount: 9, arrivedHomeCount: people.filter((p) => p.arrivedHome).length, trip, progress, day1Result, mySheetId: "" }));
 
   return (
     <div style={{ paddingBottom: 96 }}>
@@ -920,7 +958,7 @@ function App() {
   if (identityLoading) return <div style={shellStyle}><HeroBanner /><div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C" }}>載入中…</div></div>;
   if (myId === null) return <div style={shellStyle}><IdentityPicker onPick={(id) => { setMyId(id); const p = FAMILY.find((x) => x.id === id); if (p) { const u = new URL(window.location.href); u.searchParams.set("who", p.sheetId); window.history.replaceState({}, "", u); } }} /></div>;
 
-  const ctx = { checkedCount, trip, progress, day1Result, mySheetId: me?.sheetId || "" };
+  const ctx = { checkedCount, arrivedHomeCount: people.filter((p) => p.arrivedHome).length, trip, progress, day1Result, mySheetId: me?.sheetId || "" };
 
   return (
     <div style={shellStyle}>
