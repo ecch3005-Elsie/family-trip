@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>瓦特鎮家族｜2026 雲林小旅行</title>
-
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#1F4A3D" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,80 +12,26 @@
 <meta name="apple-mobile-web-app-title" content="瓦特鎮家族" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <link rel="icon" href="icon-192.png" />
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
 <style>
   html, body { margin: 0; padding: 0; background: #F3E9D2; overscroll-behavior: none; }
-  * { -webkit-tap-highlight-color: transparent; }
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   .leaflet-container { font-family: inherit; }
+  input, button { font-family: inherit; }
 </style>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.template.js"></script>
+<script src="config.trip2026.js"></script>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
-
-// ==================================================
-// Design tokens (unchanged from Phase 1)
-// ==================================================
-const COLORS = {
-  deepGreen: "#1F4A3D",
-  plantGreen: "#4C8763",
-  gold: "#E8B34A",
-  warmWhite: "#FBF6EC",
-  cream: "#F3E9D2",
-  orange: "#E4732C",
-  red: "#C24A3B",
-  ink: "#26332C",
-};
-
-// ==================================================
-// Data sources
-// ==================================================
-// 報到資料（checkedIn）：Google Sheets + Apps Script Web App — 這是唯一來源
-// 其他資料（trip-state：下一站/公告/任務/SOS）：暫時仍用 Claude Artifact Shared
-// Storage，這次 Phase 只換報到，其餘功能維持原樣、不動。
-const WEBAPP_URL =
-  "https://script.google.com/macros/s/AKfycbzeocoHvNHF4HRVwGSf_wGYs_R_lKsNsAHy_thyvrXwEwERdDcjfNTWAIGhNSfVUo8-cA/exec";
-const TRIP_KEY = "trip-state";
-const POLL_MS = 4000;
-
-const FAMILY = [
-  { id: 1, name: "Walter", initial: "W", sheetId: "walter" },
-  { id: 2, name: "文", initial: "文", sheetId: "wen" },
-  { id: 3, name: "艷", initial: "艷", sheetId: "yan" },
-  { id: 4, name: "Money", initial: "M", sheetId: "money" },
-  { id: 5, name: "享", initial: "享", sheetId: "xiang" },
-  { id: 6, name: "心", initial: "心", sheetId: "xin" },
-  { id: 7, name: "肉粽", initial: "肉", sheetId: "rouzong" },
-  { id: 8, name: "庭", initial: "庭", sheetId: "ting" },
-  { id: 9, name: "呈", initial: "呈", sheetId: "cheng" },
-];
-
-// ---- Google Sheet helpers ----
-// GET returns { ok, members: [...], feedback: [...] }
-async function fetchSheetData() {
-  const res = await fetch(WEBAPP_URL, { method: "GET" });
-  if (!res.ok) throw new Error("GET failed: " + res.status);
-  const data = await res.json();
-  if (!data || !data.ok || !Array.isArray(data.members)) throw new Error("bad payload");
-  const currentStop = data.progress && typeof data.progress.currentStop !== "undefined" ? Number(data.progress.currentStop) : -1;
-  return {
-    members: data.members,
-    feedback: Array.isArray(data.feedback) ? data.feedback : [],
-    progress: { currentStop: isNaN(currentStop) ? -1 : currentStop },
-  };
-}
-
-// POST body sent as text/plain on purpose — avoids a CORS preflight (OPTIONS)
-// request, which Apps Script Web Apps don't handle. The Apps Script side still
-// reads it as JSON via JSON.parse(e.postData.contents).
+// ---- helpers ----
 async function postToSheet(body) {
   const res = await fetch(WEBAPP_URL, {
     method: "POST",
@@ -99,175 +44,118 @@ async function postToSheet(body) {
   return data;
 }
 
-function isTruthy(v) {
-  return v === true || v === "TRUE" || v === "true" || v === 1;
+async function fetchSheetData() {
+  const res = await fetch(WEBAPP_URL, { method: "GET" });
+  if (!res.ok) throw new Error("GET failed: " + res.status);
+  const data = await res.json();
+  if (!data || !data.ok || !Array.isArray(data.members)) throw new Error("bad payload");
+  const currentStop = data.progress && typeof data.progress.currentStop !== "undefined"
+    ? Number(data.progress.currentStop) : -1;
+  return {
+    members: data.members,
+    feedback: Array.isArray(data.feedback) ? data.feedback : [],
+    progress: { currentStop: isNaN(currentStop) ? -1 : currentStop },
+    guesses: Array.isArray(data.guesses) ? data.guesses : [],
+    segments: Array.isArray(data.segments) ? data.segments : [],
+    photos: Array.isArray(data.photos) ? data.photos : [],
+    tasks: data.tasks || DEFAULT_TRIP.tasks,
+    announcements: Array.isArray(data.announcements) ? data.announcements : [],
+    day1Result: data.day1Result || null,
+    guessLocked: !!data.guessLocked,
+  };
 }
 
-// ---- Weather (Open-Meteo, 免費、不用金鑰) ----
-const WEATHER_CODE_MAP = {
-  0: { icon: "☀️", label: "晴朗" },
-  1: { icon: "🌤️", label: "大致晴朗" },
-  2: { icon: "⛅", label: "多雲" },
-  3: { icon: "☁️", label: "陰天" },
-  45: { icon: "🌫️", label: "有霧" },
-  48: { icon: "🌫️", label: "有霧" },
-  51: { icon: "🌦️", label: "小毛毛雨" },
-  53: { icon: "🌦️", label: "毛毛雨" },
-  55: { icon: "🌦️", label: "大毛毛雨" },
-  61: { icon: "🌧️", label: "小雨" },
-  63: { icon: "🌧️", label: "中雨" },
-  65: { icon: "🌧️", label: "大雨" },
-  66: { icon: "🌧️", label: "凍雨" },
-  67: { icon: "🌧️", label: "強凍雨" },
-  71: { icon: "🌨️", label: "小雪" },
-  73: { icon: "🌨️", label: "中雪" },
-  75: { icon: "🌨️", label: "大雪" },
-  80: { icon: "🌦️", label: "短暫陣雨" },
-  81: { icon: "🌧️", label: "陣雨" },
-  82: { icon: "⛈️", label: "強陣雨" },
-  95: { icon: "⛈️", label: "雷雨" },
-  96: { icon: "⛈️", label: "雷雨挾冰雹" },
-  99: { icon: "⛈️", label: "強雷雨挾冰雹" },
-};
-function weatherInfo(code) {
-  return WEATHER_CODE_MAP[code] || { icon: "🌤️", label: "" };
-}
+function isTruthy(v) { return v === true || v === "TRUE" || v === "true" || v === 1; }
+
+function weatherInfo(code) { return WEATHER_CODE_MAP[code] || { icon: "🌤️", label: "" }; }
 
 async function fetchWeather() {
-  const url =
-    "https://api.open-meteo.com/v1/forecast?latitude=" + QISHAN_LAT +
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + QISHAN_LAT +
     "&longitude=" + QISHAN_LNG +
     "&current=temperature_2m,weather_code&hourly=precipitation_probability" +
     "&timezone=Asia%2FTaipei&forecast_days=2";
   const res = await fetch(url);
-  if (!res.ok) throw new Error("weather fetch failed: " + res.status);
+  if (!res.ok) throw new Error("weather fetch failed");
   const data = await res.json();
-  if (!data || !data.current) throw new Error("bad weather payload");
-  const idx = Array.isArray(data.hourly && data.hourly.time) ? data.hourly.time.indexOf(data.current.time) : -1;
-  const precipProb = idx >= 0 ? data.hourly.precipitation_probability[idx] : null;
+  const idx = Array.isArray(data.hourly?.time) ? data.hourly.time.indexOf(data.current.time) : -1;
   return {
     temp: data.current.temperature_2m,
     code: data.current.weather_code,
-    precipProb,
+    precipProb: idx >= 0 ? data.hourly.precipitation_probability[idx] : null,
   };
 }
 
-const DEFAULT_TRIP = {
-  tasks: { photo: false, food: false, dayComplete: false, safeArrival: false },
-  announcements: [], // { id, level: normal|important|urgent, text, ts }
-};
+function sumDay1Km(segments) {
+  return segments.filter((s) => s.stopIndex <= DAY1_ACCOMMODATION_STOP_ID).reduce((a, s) => a + s.km, 0);
+}
 
-// 真實行程站點（使用者提供，不是編造的）。「08:30 旗山早餐大會師」已經由
-// 「報到」分頁的出發報到負責，這裡從離開集合地點開始算。currentStop 是
-// 「目前走到第幾站」的索引（-1 代表還沒出發），存在 Google Sheet 的
-// Progress 分頁，跨手機共用。
-const STOPS = [
-  { id: 0, day: 1, time: "09:10", name: "台3線出發" },
-  { id: 1, day: 1, time: "11:30", name: "伯恭甕缸雞" },
-  { id: 2, day: 1, time: "14:30", name: "古坑好農", note: "時間彈性" },
-  { id: 3, day: 1, time: "16:00", name: "茗鎮民宿" },
-  { id: 4, day: 1, time: "16:30", name: "華山咖啡大街" },
-  { id: 5, day: 1, time: "18:00", name: "華山會館" },
-  { id: 6, day: 2, time: "09:30", name: "民宿出發" },
-  { id: 7, day: 2, time: "10:20", name: "五元兩角" },
-  { id: 8, day: 2, time: "11:30", name: "雲嶺之丘" },
-  { id: 9, day: 2, time: "12:00", name: "午餐" },
-  { id: 10, day: 2, time: "13:30", name: "草嶺下山" },
-  { id: 11, day: 2, time: "約17:00", name: "抵達永康" },
-  { id: 12, day: 2, time: "17:30", name: "東悅坊慶功宴" },
-  { id: 13, day: 2, time: "約19:00", name: "台南組解散" },
-  { id: 14, day: 2, time: "約20:00", name: "萬丹解散" },
-  { id: 15, day: 2, time: "約20:30後", name: "高雄各組返家" },
-];
-const DEFAULT_PROGRESS = { currentStop: -1 };
+function sumAllKm(segments) { return segments.reduce((a, s) => a + s.km, 0); }
 
-const TASK_DEFS = [
-  { key: "photo", label: "家族合照", icon: "📸", doneLabel: "家族合照完成", cta: "📸 我們拍好了！" },
-  { key: "food", label: "今日美食", icon: "🍜", doneLabel: "今日美食完成", cta: "🍜 吃飽啦！" },
-  { key: "dayComplete", label: "完成今日行程", icon: "🌄", doneLabel: "今日行程完成", cta: "🌄 完成啦！" },
-  { key: "safeArrival", label: "平安抵達住宿", icon: "🏠", doneLabel: "平安抵達住宿", cta: "🏠 平安抵達！" },
-];
+function formatTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
 
-// Phase 2 — 輕量家人回饋，跟原本的緊急 SOS 已經合併（機車故障/迷路/加油這些
-// 太少用，且分開兩區使用者容易混淆），現在統一在這裡：
-const FEEDBACK_TYPES = [
-  { key: "toilet", label: "上廁所", icon: "🚻" },
-  { key: "fuel", label: "快沒油了", icon: "⛽" },
-  { key: "help", label: "需要大家幫忙", icon: "📞" },
-  { key: "rest", label: "想休息一下", icon: "😴" },
-  { key: "photo", label: "想停下來拍照", icon: "📸" },
-  { key: "drink", label: "想買飲料", icon: "🥤" },
-];
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return (d.getMonth() + 1) + "/" + d.getDate() + " " + formatTime(iso);
+}
 
-const ANNOUNCEMENT_LEVELS = {
-  normal: { label: "一般", color: COLORS.plantGreen, bg: "#E4F1E1" },
-  important: { label: "重要", color: "#B8861F", bg: "#FBF0D6" },
-  urgent: { label: "緊急", color: COLORS.red, bg: "#F8E0DB" },
-};
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-// 旗山市區大概中心的座標 — 不是「旗山早餐店」的精確門口位置，等實際地址
-// 確認後可以再換成精準座標。
-const QISHAN_LAT = 22.8724;
-const QISHAN_LNG = 120.4297;
+// ---- UI tokens ----
+function SectionTitle({ children, style }) {
+  return <div style={{ ...SECTION_TITLE, ...style }}>{children}</div>;
+}
 
-const LOCATIONS = [
-  { type: "集合地點", icon: "📍", name: "旗山早餐店", desc: "8:30 準時集合，記得吃早餐再出發！", configured: true, lat: QISHAN_LAT, lng: QISHAN_LNG },
-  { type: "景點", icon: "🌿", name: "", desc: "", configured: false },
-  { type: "餐廳", icon: "🍜", name: "", desc: "", configured: false },
-  { type: "住宿", icon: "🏠", name: "", desc: "", configured: false },
-  { type: "下一站", icon: "🏍️", name: "", desc: "", configured: false },
-];
+function PageTitle({ children }) {
+  return <div style={{ margin: "18px 16px 0", ...PAGE_TITLE }}>{children}</div>;
+}
 
-const ACHIEVEMENT_DEFS = [
-  { key: "allGather", label: "全員到齊", icon: "🎉", check: (ctx) => ctx.checkedCount === 9 },
-  { key: "together", label: "全家一起出發", icon: "❤️", check: (ctx) => ctx.progress.currentStop >= 0 },
-  { key: "firstStop", label: "第一站完成", icon: "🏍️", check: (ctx) => ctx.progress.currentStop >= 1 },
-  { key: "photo", label: "家族合照", icon: "📸", check: (ctx) => ctx.trip.tasks.photo },
-  { key: "food", label: "今日美食", icon: "🍜", check: (ctx) => ctx.trip.tasks.food },
-  { key: "dayComplete", label: "今日旅程完成", icon: "🌄", check: (ctx) => ctx.trip.tasks.dayComplete },
-];
+function Card({ children, style }) {
+  return (
+    <div style={{
+      margin: "16px 16px 0", background: COLORS.warmWhite, borderRadius: 20,
+      padding: "16px 16px", boxShadow: "0 6px 18px rgba(31,74,61,0.10)", ...style,
+    }}>{children}</div>
+  );
+}
 
-const SAFETY_TIPS = ["🪖 安全帽戴好", "🧥 備好兩件式雨衣", "🌧️ 山區可能下雨", "⛽ 確認油量", "🏍️ 保持車距", "❤️ 不趕路，平安最重要"];
-
-// ==================================================
-// Shared UI pieces (Phase 1, unchanged)
-// ==================================================
 function HeroBanner() {
   return (
-    <div
-      style={{
-        position: "relative",
-        height: 190,
-        overflow: "hidden",
-        background: `linear-gradient(180deg, ${COLORS.deepGreen} 0%, ${COLORS.plantGreen} 62%, ${COLORS.gold} 100%)`,
-      }}
-    >
-      <svg
-        viewBox="0 0 400 190"
-        preserveAspectRatio="none"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-      >
-        <circle cx="336" cy="40" r="22" fill="#FCEFC6" opacity="0.9" />
-        <circle cx="336" cy="40" r="22" fill="none" stroke="#FFF7DC" strokeWidth="1" opacity="0.5" />
-        <path d="M0 130 L60 90 L120 125 L180 80 L240 128 L300 95 L400 130 L400 190 L0 190 Z" fill="#164235" opacity="0.55" />
-        <path d="M0 150 L80 110 L150 150 L230 105 L320 150 L400 120 L400 190 L0 190 Z" fill="#0F332A" opacity="0.85" />
-        <path d="M0 190 L150 150 L260 150 L400 190 Z" fill="#3A2E22" />
-        <path d="M150 150 L260 150" stroke="#F3E9D2" strokeWidth="2" strokeDasharray="8 8" opacity="0.6" />
+    <div style={{
+      position: "relative", height: 200, overflow: "hidden",
+      background: `linear-gradient(180deg, ${COLORS.deepGreen} 0%, ${COLORS.plantGreen} 62%, ${COLORS.gold} 100%)`,
+    }}>
+      <svg viewBox="0 0 400 200" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        <path d="M0 140 L60 100 L120 135 L180 90 L240 138 L300 105 L400 140 L400 200 L0 200 Z" fill="#164235" opacity="0.55" />
+        <path d="M0 160 L80 120 L150 160 L230 115 L320 160 L400 130 L400 200 L0 200 Z" fill="#0F332A" opacity="0.85" />
+        <path d="M0 200 L150 160 L260 160 L400 200 Z" fill="#3A2E22" />
+        <path d="M150 160 L260 160" stroke="#F3E9D2" strokeWidth="2" strokeDasharray="8 8" opacity="0.6" />
       </svg>
-      <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, textAlign: "center", fontSize: 32 }}>🛵💨</div>
-      <div style={{ position: "absolute", top: 14, left: 18, right: 18, color: COLORS.warmWhite }}>
-        <div
-          style={{
-            display: "inline-block", background: "white", borderRadius: 14, padding: "5px 10px 3px",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-          }}
-        >
-          <img src="logo.png" alt="瓦特鎮家族" style={{ height: 30, display: "block" }} />
+      <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", fontSize: 28 }}>🛵💨</div>
+      <div style={{ position: "absolute", top: 12, left: 16, right: 16, color: COLORS.warmWhite, textAlign: "center" }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          width: 72, height: 72, borderRadius: "50%", background: "white",
+          border: `3px solid ${COLORS.gold}`, boxShadow: "0 4px 14px rgba(0,0,0,0.25)", overflow: "hidden",
+        }}>
+          <img src="logo.png" alt="瓦特鎮家族" style={{ width: 58, height: 58, objectFit: "contain", display: "block" }} />
         </div>
-        <div style={{ fontSize: 26, fontWeight: 800, marginTop: 8, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
-          2026 雲林二日機車小旅行
+        <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+          {TRIP.title}
         </div>
-        <div style={{ fontSize: 16, fontWeight: 500, marginTop: 6, opacity: 0.95 }}>中秋・跟家人一起出發</div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4, opacity: 0.95 }}>{TRIP.subtitle1}</div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2, opacity: 0.9 }}>{TRIP.subtitle2}</div>
       </div>
     </div>
   );
@@ -277,35 +165,53 @@ function InfoStrip() {
   return (
     <div style={{ display: "flex", gap: 10, margin: "-22px 16px 0", position: "relative", zIndex: 2 }}>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
-        <div style={{ fontSize: 14, color: "#8A7A5C", fontWeight: 600 }}>集合地點</div>
-        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>📍 旗山早餐店</div>
+        <SectionTitle>集合地點</SectionTitle>
+        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>📍 {TRIP.meeting.place}</div>
       </div>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
-        <div style={{ fontSize: 14, color: "#8A7A5C", fontWeight: 600 }}>集合時間</div>
-        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>⏰ 上午 8:30</div>
+        <SectionTitle>集合時間</SectionTitle>
+        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>⏰ {TRIP.meeting.time}</div>
+      </div>
+    </div>
+  );
+}
+
+function KmInputModal({ nextStopName, onConfirm, onCancel }) {
+  const [km, setKm] = useState("");
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: COLORS.warmWhite, borderRadius: 20, padding: "22px 18px", width: "100%", maxWidth: 340 }}>
+        <SectionTitle style={{ fontSize: 17, color: COLORS.deepGreen, fontWeight: 800 }}>🛣️ 這一段騎了幾公里？</SectionTitle>
+        <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 6 }}>抵達：{nextStopName}</div>
+        <input
+          type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12.5"
+          value={km} onChange={(e) => setKm(e.target.value)}
+          style={{ width: "100%", marginTop: 14, padding: "12px 14px", borderRadius: 12, border: "1px solid #DCD3B8", fontSize: 18, textAlign: "center" }}
+        />
+        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontWeight: 700, cursor: "pointer" }}>取消</button>
+          <button
+            onClick={() => { const v = parseFloat(km); if (!isNaN(v) && v >= 0) onConfirm(v); }}
+            style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: COLORS.plantGreen, color: "white", fontWeight: 800, cursor: "pointer" }}
+          >確認抵達</button>
+        </div>
       </div>
     </div>
   );
 }
 
 function CheckInGauge({ count, total, label }) {
-  const gaugeLabel = label || "已報到";
-  const r = 54;
-  const c = 2 * Math.PI * r;
-  const frac = count / total;
+  const r = 54, c = 2 * Math.PI * r, frac = count / total;
   return (
     <div style={{ position: "relative", width: 132, height: 132, margin: "0 auto" }}>
       <svg width="132" height="132" viewBox="0 0 132 132">
         <circle cx="66" cy="66" r={r} fill="none" stroke="#EAE0C6" strokeWidth="12" />
-        <circle
-          cx="66" cy="66" r={r} fill="none" stroke={COLORS.plantGreen} strokeWidth="12" strokeLinecap="round"
-          strokeDasharray={`${c * frac} ${c}`} transform="rotate(-90 66 66)"
-          style={{ transition: "stroke-dasharray 0.5s ease" }}
-        />
+        <circle cx="66" cy="66" r={r} fill="none" stroke={COLORS.plantGreen} strokeWidth="12" strokeLinecap="round"
+          strokeDasharray={`${c * frac} ${c}`} transform="rotate(-90 66 66)" style={{ transition: "stroke-dasharray 0.5s ease" }} />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{count}/{total}</div>
-        <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>{gaugeLabel}</div>
+        <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.deepGreen }}>{count}/{total}</div>
+        <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>{label}</div>
       </div>
     </div>
   );
@@ -314,68 +220,109 @@ function CheckInGauge({ count, total, label }) {
 function Avatar({ person }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 62 }}>
-      <div
-        style={{
-          position: "relative", width: 52, height: 52, borderRadius: "50%", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          fontSize: person.initial && person.initial.length > 1 ? 17 : 22,
-          fontWeight: 800, color: COLORS.deepGreen,
-          background: person.checkedIn ? "#E4F1E1" : "#F0EBDD",
-          border: person.checkedIn ? `2px solid ${COLORS.plantGreen}` : "2px solid #DCD3B8",
-          opacity: person.checkedIn ? 1 : 0.75, transition: "all 0.3s ease",
-        }}
-      >
+      <div style={{
+        position: "relative", width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: person.initial?.length > 1 ? 17 : 22, fontWeight: 800, color: COLORS.deepGreen,
+        background: person.checkedIn ? "#E4F1E1" : "#F0EBDD",
+        border: person.checkedIn ? `2px solid ${COLORS.plantGreen}` : "2px solid #DCD3B8",
+        opacity: person.checkedIn ? 1 : 0.75,
+      }}>
         {person.initial}
-        {person.checkedIn ? (
-          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: COLORS.plantGreen, color: "white", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>✓</div>
-        ) : (
-          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: "#C9BE9F", color: "white", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>⋯</div>
+        <div style={{
+          position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%",
+          background: person.checkedIn ? COLORS.plantGreen : "#C9BE9F", color: "white", fontSize: 12,
+          display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite,
+        }}>{person.checkedIn ? "✓" : "⋯"}</div>
+      </div>
+      <div style={{ fontSize: 14, marginTop: 6, fontWeight: person.self ? 800 : 600, color: person.checkedIn ? COLORS.deepGreen : "#9A8E6E" }}>{person.name}</div>
+    </div>
+  );
+}
+
+function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, onSaved }) {
+  const me = FAMILY.find((p) => p.id === myId);
+  const myGuess = guesses.find((g) => g.personId === me?.sheetId);
+  const [km, setKm] = useState(myGuess ? String(myGuess.guessKm) : "");
+  const [time, setTime] = useState(myGuess?.guessTime || "16:00");
+  const [saving, setSaving] = useState(false);
+
+  if (day1Result) {
+    const star = FAMILY.find((p) => p.sheetId === day1Result.starPersonId);
+    return (
+      <Card style={{ background: "#FDF1D6", border: `2px solid ${COLORS.gold}` }}>
+        <SectionTitle style={{ color: COLORS.deepGreen, fontWeight: 800 }}>⭐ 今日之星出爐！</SectionTitle>
+        <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 8 }}>{star ? star.name : "—"}</div>
+        <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
+          實際總公里：<strong>{day1Result.totalKm.toFixed(1)} km</strong><br />
+          抵達 {TRIP.day1AccommodationName}：<strong>{formatTime(day1Result.arrivalTime)}</strong>
+        </div>
+      </Card>
+    );
+  }
+
+  if (guessLocked) {
+    return (
+      <Card>
+        <SectionTitle>🎲 出發前猜謎（已鎖定）</SectionTitle>
+        <div style={{ fontSize: 15, color: "#8A7A5C", marginTop: 8 }}>已出發，等待抵達住宿揭曉答案！</div>
+        {myGuess && (
+          <div style={{ marginTop: 10, fontSize: 15, color: COLORS.ink }}>
+            你的猜測：{myGuess.guessKm} km · {myGuess.guessTime}
+          </div>
         )}
-      </div>
-      <div style={{ fontSize: 14, marginTop: 6, fontWeight: person.self ? 800 : 600, color: person.checkedIn ? COLORS.deepGreen : "#9A8E6E" }}>
-        {person.name}
-      </div>
-    </div>
-  );
-}
+      </Card>
+    );
+  }
 
-function Card({ children, style }) {
   return (
-    <div
-      style={{
-        margin: "16px 16px 0",
-        background: COLORS.warmWhite,
-        borderRadius: 20,
-        padding: "16px 16px",
-        boxShadow: "0 6px 18px rgba(31,74,61,0.10)",
-        ...style,
-      }}
-    >
-      {children}
-    </div>
+    <Card>
+      <SectionTitle>🎲 出發前猜謎（Day 1）</SectionTitle>
+      <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 6, lineHeight: 1.5 }}>
+        猜今日總公里數 & 抵達 {TRIP.day1AccommodationName} 時間<br />
+        最準的人拿「今日之星 ⭐」
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, color: "#8A7A5C", marginBottom: 4 }}>總公里（km）</div>
+          <input type="number" inputMode="decimal" value={km} onChange={(e) => setKm(e.target.value)}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, color: "#8A7A5C", marginBottom: 4 }}>抵達時間</div>
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }} />
+        </div>
+      </div>
+      <button
+        disabled={saving || !km}
+        onClick={async () => {
+          setSaving(true);
+          try {
+            await postToSheet({ action: "submitGuess", personId: me.sheetId, personName: me.name, guessKm: parseFloat(km), guessTime: time });
+            if (onSaved) onSaved();
+          } catch (e) {}
+          setSaving(false);
+        }}
+        style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 12, border: "none", background: COLORS.gold, color: "#4A3617", fontWeight: 800, cursor: "pointer" }}
+      >{myGuess ? "更新我的猜測" : "送出猜測"}</button>
+      <div style={{ fontSize: 13, color: "#B0A480", marginTop: 8, textAlign: "center" }}>
+        已有 {guesses.length}/9 人猜測 · {checkedCount}/9 人報到
+      </div>
+    </Card>
   );
 }
 
-// ==================================================
-// Identity picker (Phase 1, unchanged)
-// ==================================================
 function IdentityPicker({ onPick }) {
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
       <Card style={{ padding: "24px 18px", textAlign: "center" }}>
-        <div style={{ fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>你是哪一位家人？</div>
+        <SectionTitle style={{ fontSize: 17, color: COLORS.deepGreen, fontWeight: 800 }}>你是哪一位家人？</SectionTitle>
         <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 6 }}>選好之後，記得把網址列的連結收藏起來，下次直接用</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 18, marginTop: 22, justifyItems: "center" }}>
           {FAMILY.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onPick(p.id)}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", width: 62 }}
-            >
-              <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: p.initial && p.initial.length > 1 ? 17 : 22, fontWeight: 800, color: COLORS.deepGreen, background: "#F0EBDD", border: "2px solid #DCD3B8" }}>
-                {p.initial}
-              </div>
+            <button key={p.id} onClick={() => onPick(p.id)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: p.initial?.length > 1 ? 17 : 22, fontWeight: 800, color: COLORS.deepGreen, background: "#F0EBDD", border: "2px solid #DCD3B8" }}>{p.initial}</div>
               <div style={{ fontSize: 14, marginTop: 6, fontWeight: 600, color: COLORS.ink }}>{p.name}</div>
             </button>
           ))}
@@ -385,72 +332,120 @@ function IdentityPicker({ onPick }) {
   );
 }
 
-// ==================================================
-// Phase 2: 下一個重要時間 / 下一站 / 目前旅程狀態 / 全員到齊
-// ==================================================
-function NextUpCard({ progress }) {
-  const next = STOPS[progress.currentStop + 1];
+function CheckinBlock({ icon, title, gaugeLabel, people, doneField, myId, buttonPendingLabel, buttonDoneLabel, remainingLabel, allDoneLabel, onCheckIn, onReset, syncState, resetLabel }) {
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const count = people.filter((p) => p[doneField]).length;
+  const self = people.find((p) => p.id === myId);
+  const selfDone = self ? self[doneField] : false;
   return (
     <Card>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>⏰ 下一個重要時間</div>
-      <div style={{ marginTop: 8 }}>
-        {next ? (
-          <>
-            <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen }}>{next.time}</div>
-            <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>
-              📍 {next.name}
-              {next.note ? <span style={{ fontSize: 13, color: "#9A8E6E", fontWeight: 500 }}>（{next.note}）</span> : null}
-            </div>
-          </>
+      <SectionTitle style={{ fontSize: 17, color: COLORS.deepGreen, fontWeight: 800, marginBottom: 10 }}>{icon} {title}</SectionTitle>
+      <CheckInGauge count={count} total={9} label={gaugeLabel} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 16, marginTop: 20, justifyItems: "center" }}>
+        {people.map((p) => <Avatar key={p.id} person={{ ...p, checkedIn: p[doneField], self: p.id === myId }} />)}
+      </div>
+      <button onClick={onCheckIn} disabled={selfDone} style={{
+        width: "100%", marginTop: 22, padding: "16px 0", borderRadius: 18, border: "none", fontSize: 20, fontWeight: 800, color: "white",
+        background: selfDone ? "linear-gradient(135deg, #9CC0A8, #7FAF8C)" : `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
+        cursor: selfDone ? "default" : "pointer",
+      }}>{selfDone ? buttonDoneLabel : buttonPendingLabel}</button>
+      <div style={{ textAlign: "center", marginTop: 14, fontSize: 15, color: "#8A7A5C" }}>
+        {count === 9 ? <span style={{ color: COLORS.orange, fontWeight: 700 }}>{allDoneLabel}</span> : <>還有 {9 - count} 位家人{remainingLabel}</>}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 8, fontSize: 13, color: syncState === "error" ? COLORS.orange : "#B0A480" }}>
+        {syncState === "error" ? "同步失敗，稍後自動重試" : "🟢 已同步"}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 8 }}>
+        {confirmingReset ? (
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button onClick={() => { onReset(); setConfirmingReset(false); }} style={{ fontSize: 13, fontWeight: 700, color: "white", background: COLORS.red, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}>確定{resetLabel}</button>
+            <button onClick={() => setConfirmingReset(false)} style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C", background: "none", border: "1px solid #DCD3B8", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}>取消</button>
+          </div>
         ) : (
-          <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.orange }}>🎉 全部行程都跑完了！</div>
+          <button onClick={() => setConfirmingReset(true)} style={{ fontSize: 13, color: "#B0A480", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}>{resetLabel}</button>
         )}
       </div>
     </Card>
   );
 }
 
-function JourneyStageCard({ progress, allHere, onAdvance }) {
+function CheckinTab(props) {
+  const { people, myId, loaded, syncState, guesses, guessLocked, checkedCount, day1Result, ...handlers } = props;
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner /><InfoStrip />
+      {!loaded ? (
+        <Card><div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C" }}>{syncState === "error" ? "尚未連線，同步失敗" : "同步中…"}</div></Card>
+      ) : (
+        <>
+          <GuessSection myId={myId} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} onSaved={handlers.onSaved} />
+          <CheckinBlock icon="🚀" title="出發報到" gaugeLabel="已報到" people={people} doneField="checkedIn" myId={myId}
+            buttonPendingLabel="👋 我到啦！" buttonDoneLabel="✓ 已報到" remainingLabel="尚未抵達" allDoneLabel="🎉 全員到齊，準備出發！"
+            resetLabel="重置全部報到人數" syncState={syncState} onCheckIn={handlers.onCheckIn} onReset={handlers.onResetCheckin} />
+          <CheckinBlock icon="🏠" title="到家報到" gaugeLabel="已到家" people={people} doneField="arrivedHome" myId={myId}
+            buttonPendingLabel="🏠 到家啦！" buttonDoneLabel="✓ 已到家" remainingLabel="尚未到家" allDoneLabel="🎉 全員到家，平安旅程圓滿完成！"
+            resetLabel="重置全部到家狀態" syncState={syncState} onCheckIn={handlers.onCheckInHome} onReset={handlers.onResetCheckinHome} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function JourneyStageCard({ progress, allHere, segments, onRequestAdvance }) {
   const current = progress.currentStop >= 0 ? STOPS[progress.currentStop] : null;
   const next = STOPS[progress.currentStop + 1];
   const finished = progress.currentStop === STOPS.length - 1;
+  const day1Km = sumDay1Km(segments);
+  const showDay1Km = progress.currentStop >= 0 && progress.currentStop <= DAY1_ACCOMMODATION_STOP_ID;
 
   return (
     <Card>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>目前旅程狀態</div>
+      <SectionTitle>目前旅程狀態</SectionTitle>
       <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>
-        {finished ? "🎉 今日行程跑完了" : current ? `📍 ${current.name}` : "🟢 集合中"}
+        {finished ? "🎉 全部行程跑完了" : current ? `📍 ${current.name}` : "🟢 集合中"}
       </div>
-
-      {allHere && progress.currentStop === -1 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 17, marginBottom: 10 }}>
-            🎉 全員到齊！
-          </div>
-          <button
-            onClick={onAdvance}
-            style={{
-              width: "100%", padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800,
-              color: "white", background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
-              boxShadow: "0 10px 22px rgba(31,74,61,0.30)", cursor: "pointer",
-            }}
-          >
-            🏍️ 出發囉！
-          </button>
+      {showDay1Km && (
+        <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: COLORS.cream, fontSize: 15, fontWeight: 700, color: COLORS.deepGreen }}>
+          🛣️ Day 1 目前累積：{day1Km.toFixed(1)} 公里
         </div>
       )}
-
-      {progress.currentStop >= 0 && next && (
-        <button
-          onClick={onAdvance}
-          style={{
-            width: "100%", marginTop: 14, padding: "12px 0", borderRadius: 14, cursor: "pointer",
-            border: `1px solid ${COLORS.plantGreen}`, background: "white", color: COLORS.plantGreen, fontWeight: 700, fontSize: 15,
-          }}
-        >
-          ✅ 抵達下一站：{next.name}
-        </button>
+      {segments.length > 0 && progress.currentStop > DAY1_ACCOMMODATION_STOP_ID && (
+        <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: COLORS.cream, fontSize: 15, fontWeight: 700, color: COLORS.deepGreen }}>
+          🛣️ 全程累積：{sumAllKm(segments).toFixed(1)} 公里
+        </div>
       )}
+      {allHere && progress.currentStop === -1 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 17, marginBottom: 10 }}>🎉 全員到齊！</div>
+          <button onClick={() => onRequestAdvance()} style={{
+            width: "100%", padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800, color: "white",
+            background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`, cursor: "pointer",
+          }}>🏍️ 出發囉！</button>
+        </div>
+      )}
+      {progress.currentStop >= 0 && next && (
+        <button onClick={() => onRequestAdvance()} style={{
+          width: "100%", marginTop: 14, padding: "12px 0", borderRadius: 14, cursor: "pointer",
+          border: `1px solid ${COLORS.plantGreen}`, background: "white", color: COLORS.plantGreen, fontWeight: 700, fontSize: 15,
+        }}>✅ 抵達下一站：{next.name}</button>
+      )}
+    </Card>
+  );
+}
+
+function NextUpCard({ progress }) {
+  const next = STOPS[progress.currentStop + 1];
+  return (
+    <Card>
+      <SectionTitle>⏰ 下一個重要時間</SectionTitle>
+      <div style={{ marginTop: 8 }}>
+        {next ? (
+          <>
+            <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen }}>{next.time}</div>
+            <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>📍 {next.name}{next.note ? <span style={{ fontSize: 13, color: "#9A8E6E" }}>（{next.note}）</span> : null}</div>
+          </>
+        ) : <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.orange }}>🎉 全部行程都跑完了！</div>}
+      </div>
     </Card>
   );
 }
@@ -458,102 +453,56 @@ function JourneyStageCard({ progress, allHere, onAdvance }) {
 function ProgressTimeline({ progress }) {
   const [day, setDay] = useState(1);
   const stops = STOPS.filter((s) => s.day === day);
-
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>旅程進度</div>
+        <SectionTitle>旅程進度</SectionTitle>
         <div style={{ display: "flex", gap: 6 }}>
           {[1, 2].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDay(d)}
-              style={{
-                fontSize: 13, fontWeight: 700, padding: "4px 12px", borderRadius: 999, cursor: "pointer",
-                border: day === d ? "none" : "1px solid #DCD3B8",
-                background: day === d ? COLORS.deepGreen : "white",
-                color: day === d ? "white" : "#8A7A5C",
-              }}
-            >
-              Day {d}
-            </button>
+            <button key={d} onClick={() => setDay(d)} style={{
+              fontSize: 13, fontWeight: 700, padding: "4px 12px", borderRadius: 999, cursor: "pointer",
+              border: day === d ? "none" : "1px solid #DCD3B8", background: day === d ? COLORS.deepGreen : "white", color: day === d ? "white" : "#8A7A5C",
+            }}>Day {d}</button>
           ))}
         </div>
       </div>
-      <div>
-        {stops.map((s) => {
-          const done = progress.currentStop >= s.id;
-          const isCurrent = progress.currentStop === s.id;
-          return (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F0EAD8" }}>
-              <div style={{ fontSize: 17 }}>{done ? "🟢" : "⚪"}</div>
-              <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, width: 66 }}>{s.time}</div>
-              <div style={{ fontSize: 15, fontWeight: isCurrent ? 800 : 600, color: done ? COLORS.deepGreen : COLORS.ink }}>
-                {s.name}
-                {s.note ? <span style={{ fontSize: 12, color: "#B0A480" }}>（{s.note}）</span> : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {stops.map((s) => {
+        const done = progress.currentStop >= s.id;
+        const isCurrent = progress.currentStop === s.id;
+        return (
+          <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F0EAD8" }}>
+            <div>{done ? "🟢" : "⚪"}</div>
+            <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, width: 66 }}>{s.time}</div>
+            <div style={{ fontSize: 15, fontWeight: isCurrent ? 800 : 600, color: done ? COLORS.deepGreen : COLORS.ink }}>{s.name}</div>
+          </div>
+        );
+      })}
     </Card>
   );
 }
 
 function WeatherCard() {
   const [weather, setWeather] = useState(null);
-  const [state, setState] = useState("loading"); // loading | ok | error
-
-  const load = async () => {
-    try {
-      const w = await fetchWeather();
-      setWeather(w);
-      setState("ok");
-    } catch (e) {
-      setState("error");
-    }
-  };
-
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 15 * 60 * 1000); // 天氣不用像報到那樣每 4 秒抓，15 分鐘更新一次就夠
-    return () => clearInterval(t);
-  }, []);
-
+  const [state, setState] = useState("loading");
+  const load = async () => { try { setWeather(await fetchWeather()); setState("ok"); } catch (e) { setState("error"); } };
+  useEffect(() => { load(); const t = setInterval(load, 900000); return () => clearInterval(t); }, []);
   const info = weather ? weatherInfo(weather.code) : null;
-
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>🌤️ 旗山即時天氣</div>
-        <button onClick={load} style={{ fontSize: 13, color: COLORS.plantGreen, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
-          重新整理
-        </button>
+        <SectionTitle>🌤️ 旗山即時天氣</SectionTitle>
+        <button onClick={load} style={{ fontSize: 13, color: COLORS.plantGreen, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>重新整理</button>
       </div>
-
       {state === "loading" && <div style={{ marginTop: 8, fontSize: 15, color: "#9A8E6E" }}>讀取中…</div>}
-      {state === "error" && <div style={{ marginTop: 8, fontSize: 15, color: COLORS.orange }}>天氣資料暫時讀不到，稍後自動重試</div>}
-
+      {state === "error" && <div style={{ marginTop: 8, fontSize: 15, color: COLORS.orange }}>天氣資料暫時讀不到</div>}
       {state === "ok" && weather && (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-            <div style={{ fontSize: 36 }}>{info.icon}</div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{Math.round(weather.temp)}°C</div>
-              <div style={{ fontSize: 14, color: "#8A7A5C", fontWeight: 600, marginTop: 3 }}>{info.label}</div>
-            </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+          <div style={{ fontSize: 36 }}>{info.icon}</div>
+          <div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.deepGreen }}>{Math.round(weather.temp)}°C</div>
+            <div style={{ fontSize: 14, color: "#8A7A5C", fontWeight: 600 }}>{info.label}</div>
           </div>
-          {weather.precipProb !== null && (
-            <div
-              style={{
-                marginTop: 10, fontSize: 15, fontWeight: 700,
-                color: weather.precipProb >= 50 ? COLORS.orange : COLORS.ink,
-              }}
-            >
-              💧 降雨機率 {weather.precipProb}%{weather.precipProb >= 50 ? "，記得帶雨衣" : ""}
-            </div>
-          )}
-        </>
+        </div>
       )}
     </Card>
   );
@@ -562,131 +511,69 @@ function WeatherCard() {
 function SafetyCard() {
   return (
     <Card>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>騎車小提醒</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {SAFETY_TIPS.map((t) => (
-          <div key={t} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, background: COLORS.cream, borderRadius: 999, padding: "6px 12px" }}>
-            {t}
-          </div>
-        ))}
+      <SectionTitle>騎車小提醒</SectionTitle>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+        {SAFETY_TIPS.map((t) => <div key={t} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, background: COLORS.cream, borderRadius: 999, padding: "6px 12px" }}>{t}</div>)}
       </div>
     </Card>
   );
 }
 
-// ==================================================
-// Phase 5: 家族公告
-// ==================================================
 function AnnouncementSection({ announcements, onPost }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [level, setLevel] = useState("normal");
   const latest = announcements[0];
-
   return (
     <Card>
-      <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>📢 家族公告</div>
+      <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", cursor: "pointer", padding: 0 }}>
+        <SectionTitle>📢 家族公告</SectionTitle>
         <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
       </button>
-
       {latest ? (
         <div style={{ marginTop: 10, background: ANNOUNCEMENT_LEVELS[latest.level].bg, borderRadius: 12, padding: "10px 12px" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[latest.level].color }}>
-            {ANNOUNCEMENT_LEVELS[latest.level].label}
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[latest.level].color }}>{ANNOUNCEMENT_LEVELS[latest.level].label}</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{latest.text}</div>
         </div>
-      ) : (
-        <div style={{ marginTop: 10, fontSize: 15, color: "#9A8E6E" }}>目前沒有公告</div>
-      )}
-
+      ) : <div style={{ marginTop: 10, fontSize: 15, color: "#9A8E6E" }}>目前沒有公告</div>}
       {open && (
         <div style={{ marginTop: 14 }}>
-          {announcements.length > 1 &&
-            announcements.slice(1).map((a) => (
-              <div key={a.id} style={{ marginTop: 8, background: ANNOUNCEMENT_LEVELS[a.level].bg, borderRadius: 12, padding: "10px 12px" }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[a.level].color }}>{ANNOUNCEMENT_LEVELS[a.level].label}</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{a.text}</div>
-              </div>
-            ))}
-
-          <div style={{ marginTop: 14, borderTop: "1px solid #E9DFC4", paddingTop: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#8A7A5C", marginBottom: 6 }}>發布新公告</div>
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="輸入公告內容"
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16, boxSizing: "border-box" }}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              {Object.entries(ANNOUNCEMENT_LEVELS).map(([k, v]) => (
-                <button
-                  key={k}
-                  onClick={() => setLevel(k)}
-                  style={{
-                    flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer",
-                    border: level === k ? `2px solid ${v.color}` : "1px solid #DCD3B8",
-                    background: level === k ? v.bg : "white", color: v.color,
-                  }}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => { if (text.trim()) { onPost(text.trim(), level); setText(""); setLevel("normal"); } }}
-              style={{ width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 10, border: "none", background: COLORS.deepGreen, color: "white", fontWeight: 700, cursor: "pointer" }}
-            >
-              發布公告
-            </button>
-          </div>
+          <SectionTitle style={{ marginBottom: 6 }}>發布新公告</SectionTitle>
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="輸入公告內容"
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }} />
+          <button onClick={() => { if (text.trim()) { onPost(text.trim(), level); setText(""); } }}
+            style={{ width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 10, border: "none", background: COLORS.deepGreen, color: "white", fontWeight: 700, cursor: "pointer" }}>發布公告</button>
         </div>
       )}
     </Card>
   );
 }
 
-// Phase 2 — 輕量家人回饋。金黃色、不會自動消失，要有人按「知道了」才會收掉。
-// 「需要大家幫忙」已經合併進這裡（原本獨立的 SOS 區塊拿掉了）。
 function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       {feedback.length > 0 && (
-        <Card style={{ background: "#FBF0D6", boxShadow: "0 6px 16px rgba(232,179,74,0.25)" }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#B8861F" }}>💬 家人想說一下</div>
+        <Card style={{ background: "#FBF0D6" }}>
+          <SectionTitle style={{ color: "#B8861F", fontWeight: 800 }}>💬 家人想說一下</SectionTitle>
           {feedback.map((f) => (
             <div key={f.id} style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink }}>
-                {f.personName}：{FEEDBACK_TYPES.find((o) => o.key === f.type)?.icon} {FEEDBACK_TYPES.find((o) => o.key === f.type)?.label}
-              </div>
-              <button
-                onClick={() => onAcknowledge(f.id)}
-                style={{ background: "none", border: "1px solid #B8861F", color: "#B8861F", borderRadius: 999, padding: "4px 10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
-              >
-                知道了
-              </button>
+              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink }}>{f.personName}：{FEEDBACK_TYPES.find((o) => o.key === f.type)?.icon} {FEEDBACK_TYPES.find((o) => o.key === f.type)?.label}</div>
+              <button onClick={() => onAcknowledge(f.id)} style={{ background: "none", border: "1px solid #B8861F", color: "#B8861F", borderRadius: 999, padding: "4px 10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>知道了</button>
             </div>
           ))}
         </Card>
       )}
-
-      <Card style={{ padding: "16px 16px 32px" }}>
-        <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>💬 跟家人說一下</div>
+      <Card>
+        <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", cursor: "pointer", padding: 0 }}>
+          <SectionTitle>💬 跟家人說一下</SectionTitle>
           <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
         </button>
         {open && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 12 }}>
             {FEEDBACK_TYPES.map((o) => (
-              <button
-                key={o.key}
-                onClick={() => { onRequest(o.key); setOpen(false); }}
-                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 15, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}
-              >
-                {o.icon} {o.label}
-              </button>
+              <button key={o.key} onClick={() => { onRequest(o.key); setOpen(false); }}
+                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 15, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}>{o.icon} {o.label}</button>
             ))}
           </div>
         )}
@@ -695,271 +582,75 @@ function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
   );
 }
 
-// ==================================================
-// 報到 — 現在獨立成自己的分頁，出發報到 ＋ 到家報到 兩組
-// ==================================================
-function CheckinBlock({
-  icon, title, gaugeLabel, people, doneField, myId,
-  buttonPendingLabel, buttonDoneLabel, remainingLabel, allDoneLabel,
-  onCheckIn, onReset, syncState, resetLabel,
-}) {
-  const [confirmingReset, setConfirmingReset] = useState(false);
-  const count = people.filter((p) => p[doneField]).length;
-  const self = people.find((p) => p.id === myId);
-  const remaining = 9 - count;
-  const selfDone = self ? self[doneField] : false;
+function PhotoGallery({ photos, myId, onUploaded }) {
+  const me = FAMILY.find((p) => p.id === myId);
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleFile = async (file) => {
+    if (!file || !me) return;
+    setUploading(true);
+    try {
+      const dataUrl = await fileToBase64(file);
+      const base64 = dataUrl.split(",")[1];
+      await postToSheet({ action: "uploadPhoto", personId: me.sheetId, personName: me.name, imageBase64: base64, mimeType: file.type, fileName: file.name });
+      onUploaded();
+    } catch (e) { alert("上傳失敗，請確認 Apps Script 已設定 Drive 資料夾 ID"); }
+    setUploading(false);
+  };
 
   return (
     <Card>
-      <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.deepGreen, marginBottom: 10 }}>{icon} {title}</div>
-      <CheckInGauge count={count} total={9} label={gaugeLabel} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 16, marginTop: 20, justifyItems: "center" }}>
-        {people.map((p) => (
-          <Avatar key={p.id} person={{ ...p, checkedIn: p[doneField], self: p.id === myId }} />
-        ))}
-      </div>
-
-      <button
-        onClick={onCheckIn}
-        disabled={selfDone}
-        style={{
-          width: "100%", marginTop: 22, padding: "16px 0", borderRadius: 18, border: "none", fontSize: 20, fontWeight: 800, color: "white",
-          background: selfDone ? "linear-gradient(135deg, #9CC0A8, #7FAF8C)" : `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
-          boxShadow: selfDone ? "none" : "0 10px 22px rgba(31,74,61,0.35)", transition: "all 0.25s ease", cursor: selfDone ? "default" : "pointer",
-        }}
-      >
-        {selfDone ? buttonDoneLabel : buttonPendingLabel}
-      </button>
-
-      <div style={{ textAlign: "center", marginTop: 14, fontSize: 15, color: "#8A7A5C", fontWeight: 500, lineHeight: 1.6 }}>
-        {remaining === 0 ? (
-          <span style={{ color: COLORS.orange, fontWeight: 700 }}>{allDoneLabel}</span>
-        ) : (
-          <>還有 {remaining} 位家人{remainingLabel}</>
-        )}
-      </div>
-
-      <div style={{ textAlign: "center", marginTop: 10, fontSize: 13, color: syncState === "error" ? COLORS.orange : "#B0A480", fontWeight: 500 }}>
-        {syncState === "error" ? "同步失敗，稍後自動重試" : "🟢 已同步"}
-      </div>
-
-      <div style={{ textAlign: "center", marginTop: 10 }}>
-        {confirmingReset ? (
-          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-            <button
-              onClick={() => { onReset(); setConfirmingReset(false); }}
-              style={{ fontSize: 13, fontWeight: 700, color: "white", background: COLORS.red, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
-            >
-              再按一次，確定{resetLabel}
-            </button>
-            <button
-              onClick={() => setConfirmingReset(false)}
-              style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C", background: "none", border: "1px solid #DCD3B8", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
-            >
-              取消
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirmingReset(true)}
-            style={{ fontSize: 13, color: "#B0A480", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
-          >
-            {resetLabel}
-          </button>
-        )}
-      </div>
+      <SectionTitle>📸 家族合照牆</SectionTitle>
+      {photos.length === 0 ? (
+        <div style={{ fontSize: 15, color: "#9A8E6E", marginTop: 8 }}>還沒有合照，快來上傳第一張！</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 10 }}>
+          {photos.map((p) => (
+            <div key={p.id} style={{ borderRadius: 12, overflow: "hidden", background: COLORS.cream }}>
+              <img src={p.url} alt="" style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }} />
+              <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#8A7A5C" }}>{p.personName}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+        onChange={(e) => { handleFile(e.target.files[0]); e.target.value = ""; }} />
+      <button onClick={() => inputRef.current?.click()} disabled={uploading} style={{
+        width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 12, border: "none",
+        background: COLORS.plantGreen, color: "white", fontWeight: 800, cursor: "pointer",
+      }}>{uploading ? "上傳中…" : "📷 上傳合照"}</button>
     </Card>
   );
 }
 
-function CheckinTab({ people, myId, loaded, syncState, onCheckIn, onCheckInHome, onResetCheckin, onResetCheckinHome }) {
-  return (
-    <div style={{ paddingBottom: 96 }}>
-      <HeroBanner />
-      <InfoStrip />
-
-      {!loaded ? (
-        <Card>
-          <div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C", fontSize: 15, fontWeight: 600 }}>
-            {syncState === "error" ? "尚未連線，同步失敗，稍後自動重試" : "同步中，正在連接 Google 試算表…"}
-          </div>
-        </Card>
-      ) : (
-        <>
-          <CheckinBlock
-            icon="🚀" title="出發報到" gaugeLabel="已報到"
-            people={people} doneField="checkedIn" myId={myId}
-            buttonPendingLabel="👋 我到啦！" buttonDoneLabel="✓ 已報到"
-            remainingLabel="尚未抵達" allDoneLabel="🎉 全員到齊，準備出發！"
-            onCheckIn={onCheckIn} onReset={onResetCheckin} syncState={syncState}
-            resetLabel="重置全部報到人數"
-          />
-          <CheckinBlock
-            icon="🏠" title="到家報到" gaugeLabel="已到家"
-            people={people} doneField="arrivedHome" myId={myId}
-            buttonPendingLabel="🏠 到家啦！" buttonDoneLabel="✓ 已到家"
-            remainingLabel="尚未到家" allDoneLabel="🎉 全員到家，平安旅程圓滿完成！"
-            onCheckIn={onCheckInHome} onReset={onResetCheckinHome} syncState={syncState}
-            resetLabel="重置全部到家狀態"
-          />
-        </>
-      )}
-    </div>
-  );
-}
-
-// ==================================================
-// 旅程 — 現在是純畫面呈現，資料／身份都從 App 上層傳進來
-// ==================================================
-function JourneyHome({ people, feedback, trip, progress, myId, checkedCount, onRequestFeedback, onAcknowledgeFeedback, onAdvance, writeTrip }) {
-  const allHere = checkedCount === 9;
-
-  return (
-    <div style={{ paddingBottom: 96 }}>
-      <HeroBanner />
-
-      <FeedbackSection feedback={feedback} onRequest={onRequestFeedback} onAcknowledge={onAcknowledgeFeedback} />
-
-      <JourneyStageCard progress={progress} allHere={allHere} onAdvance={onAdvance} />
-      <NextUpCard progress={progress} />
-      <ProgressTimeline progress={progress} />
-      <AnnouncementSection
-        announcements={trip.announcements}
-        onPost={(text, level) => {
-          const a = { id: Date.now(), level, text, ts: Date.now() };
-          writeTrip({ ...trip, announcements: [a, ...trip.announcements].slice(0, 20) });
-        }}
-      />
-      <WeatherCard />
-      <SafetyCard />
-
-      <div style={{ margin: "16px 16px 0", padding: "14px 16px", borderRadius: 16, background: `linear-gradient(135deg, ${COLORS.gold}, #F2C463)`, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 6px 14px rgba(232,179,74,0.35)" }}>
-        <div style={{ fontSize: 24 }}>🥮</div>
-        <div style={{ fontSize: 15, color: "#4A3617", fontWeight: 600, lineHeight: 1.5 }}>
-          中秋連假機車小旅行，記得帶好安全帽和防曬，路上互相照應喔！
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==================================================
-// Phase 3: 地圖
-// ==================================================
-function MapTab() {
-  const [openIdx, setOpenIdx] = useState(null);
-  const mapElRef = useRef(null);
-  const mapObjRef = useRef(null);
-
-  useEffect(() => {
-    if (!mapElRef.current || mapObjRef.current || typeof L === "undefined") return;
-    const pins = LOCATIONS.filter((l) => l.configured && l.lat && l.lng);
-    const center = pins.length ? [pins[0].lat, pins[0].lng] : [QISHAN_LAT, QISHAN_LNG];
-    const map = L.map(mapElRef.current, { attributionControl: true }).setView(center, 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
-    pins.forEach((loc) => {
-      L.marker([loc.lat, loc.lng]).addTo(map).bindPopup("<b>" + loc.name + "</b><br/>" + (loc.desc || ""));
-    });
-    mapObjRef.current = map;
-    return () => {
-      map.remove();
-      mapObjRef.current = null;
-    };
-  }, []);
-
-  return (
-    <div style={{ paddingBottom: 96 }}>
-      <HeroBanner />
-      <div style={{ margin: "18px 16px 0", fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>📍 旅行地圖</div>
-
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        <div ref={mapElRef} style={{ width: "100%", height: 260 }} />
-        <div style={{ padding: "10px 14px", fontSize: 13, color: "#9A8E6E" }}>
-          圖釘目前只有「集合地點」是已知位置(約略位置，非精確門口)；其他地點確定後會再補上
-        </div>
-      </Card>
-
-      {LOCATIONS.map((loc, i) => (
-        <Card key={loc.type} style={{ padding: "14px 16px" }}>
-          <button onClick={() => setOpenIdx(openIdx === i ? null : i)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 22 }}>{loc.icon}</div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600 }}>{loc.type}</div>
-                <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700 }}>{loc.configured ? loc.name : "待設定"}</div>
-              </div>
-            </div>
-            <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{openIdx === i ? "收合" : "詳情"}</div>
-          </button>
-          {openIdx === i && (
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #E9DFC4" }}>
-              {loc.configured ? (
-                <>
-                  <div style={{ fontSize: 15, color: COLORS.ink, lineHeight: 1.6 }}>{loc.desc}</div>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.name)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ display: "inline-block", marginTop: 10, fontSize: 15, fontWeight: 700, color: "white", background: COLORS.deepGreen, borderRadius: 999, padding: "8px 16px", textDecoration: "none" }}
-                  >
-                    📍 開啟手機地圖
-                  </a>
-                </>
-              ) : (
-                <div style={{ fontSize: 15, color: "#9A8E6E" }}>這裡目前是 Prototype，尚未接上正式資料服務。</div>
-              )}
-            </div>
-          )}
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ==================================================
-// Phase 4: 任務
-// ==================================================
-function TaskTab({ trip, progress, checkedCount, onToggle }) {
+function TaskTab({ trip, progress, checkedCount, photos, myId, onToggle, onUploaded }) {
   const autoTasks = [
     { label: "全員集合", icon: "🟢", done: checkedCount === 9 },
     { label: "第一站抵達", icon: "📍", done: progress.currentStop >= 1 },
   ];
   return (
     <div style={{ paddingBottom: 96 }}>
-      <HeroBanner />
-      <div style={{ margin: "18px 16px 0", fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>🎯 今日任務</div>
-
+      <HeroBanner /><PageTitle>🎯 今日任務</PageTitle>
+      <PhotoGallery photos={photos} myId={myId} onUploaded={onUploaded} />
       <Card>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>自動追蹤</div>
+        <SectionTitle style={{ marginBottom: 8 }}>自動追蹤</SectionTitle>
         {autoTasks.map((t) => (
           <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
-            <div style={{ fontSize: 20 }}>{t.done ? "✅" : "⬜"}</div>
+            <div>{t.done ? "✅" : "⬜"}</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: t.done ? COLORS.deepGreen : COLORS.ink }}>{t.icon} {t.label}</div>
           </div>
         ))}
       </Card>
-
       <Card>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>今天要一起完成</div>
+        <SectionTitle style={{ marginBottom: 8 }}>今天要一起完成</SectionTitle>
         {TASK_DEFS.map((t) => {
           const done = trip.tasks[t.key];
           return (
             <div key={t.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #F0EAD8" }}>
-              <div style={{ fontSize: 16, fontWeight: 600, color: done ? COLORS.deepGreen : COLORS.ink }}>
-                {t.icon} {done ? t.doneLabel : t.label}
-              </div>
-              {done ? (
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.plantGreen }}>✓ 完成啦！</div>
-              ) : (
-                <button
-                  onClick={() => onToggle(t.key)}
-                  style={{ fontSize: 14, fontWeight: 700, color: "white", background: COLORS.plantGreen, border: "none", borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}
-                >
-                  {t.cta}
-                </button>
+              <div style={{ fontSize: 16, fontWeight: 600, color: done ? COLORS.deepGreen : COLORS.ink }}>{t.icon} {done ? t.doneLabel : t.label}</div>
+              {done ? <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.plantGreen }}>✓ 完成啦！</div> : (
+                <button onClick={() => onToggle(t.key)} style={{ fontSize: 14, fontWeight: 700, color: "white", background: COLORS.plantGreen, border: "none", borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}>{t.cta}</button>
               )}
             </div>
           );
@@ -969,33 +660,58 @@ function TaskTab({ trip, progress, checkedCount, onToggle }) {
   );
 }
 
-// ==================================================
-// Phase 8: 成就
-// ==================================================
+function MapTab() {
+  const [openIdx, setOpenIdx] = useState(null);
+  const mapElRef = useRef(null);
+  const mapObjRef = useRef(null);
+  useEffect(() => {
+    if (!mapElRef.current || mapObjRef.current || typeof L === "undefined") return;
+    const pins = LOCATIONS.filter((l) => l.configured && l.lat && l.lng);
+    const center = pins.length ? [pins[0].lat, pins[0].lng] : [QISHAN_LAT, QISHAN_LNG];
+    const map = L.map(mapElRef.current).setView(center, 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(map);
+    pins.forEach((loc) => L.marker([loc.lat, loc.lng]).addTo(map).bindPopup(loc.name));
+    mapObjRef.current = map;
+    return () => { map.remove(); mapObjRef.current = null; };
+  }, []);
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner /><PageTitle>📍 旅行地圖</PageTitle>
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div ref={mapElRef} style={{ width: "100%", height: 260 }} />
+      </Card>
+      {LOCATIONS.map((loc, i) => (
+        <Card key={loc.type} style={{ padding: "14px 16px" }}>
+          <button onClick={() => setOpenIdx(openIdx === i ? null : i)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", cursor: "pointer", padding: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 22 }}>{loc.icon}</div>
+              <div style={{ textAlign: "left" }}>
+                <SectionTitle>{loc.type}</SectionTitle>
+                <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700 }}>{loc.configured ? loc.name : "待設定"}</div>
+              </div>
+            </div>
+          </button>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function AchievementTab({ ctx }) {
   return (
     <div style={{ paddingBottom: 96 }}>
-      <HeroBanner />
-      <div style={{ margin: "18px 16px 0", fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>🏆 旅程成就</div>
+      <HeroBanner /><PageTitle>🏆 旅程成就</PageTitle>
       <Card>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 18, justifyItems: "center" }}>
           {ACHIEVEMENT_DEFS.map((a) => {
             const unlocked = a.check(ctx);
             return (
               <div key={a.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 78 }}>
-                <div
-                  style={{
-                    width: 60, height: 60, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
-                    background: unlocked ? "#FDF1D6" : "#F0EBDD",
-                    border: unlocked ? `2px solid ${COLORS.gold}` : "2px solid #DCD3B8",
-                    opacity: unlocked ? 1 : 0.4,
-                  }}
-                >
-                  {a.icon}
-                </div>
-                <div style={{ fontSize: 13, marginTop: 6, fontWeight: 700, textAlign: "center", color: unlocked ? COLORS.deepGreen : "#9A8E6E" }}>
-                  {a.label}
-                </div>
+                <div style={{
+                  width: 60, height: 60, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
+                  background: unlocked ? "#FDF1D6" : "#F0EBDD", border: unlocked ? `2px solid ${COLORS.gold}` : "2px solid #DCD3B8", opacity: unlocked ? 1 : 0.4,
+                }}>{a.icon}</div>
+                <div style={{ fontSize: 13, marginTop: 6, fontWeight: 700, textAlign: "center", color: unlocked ? COLORS.deepGreen : "#9A8E6E" }}>{a.label}</div>
               </div>
             );
           })}
@@ -1005,88 +721,176 @@ function AchievementTab({ ctx }) {
   );
 }
 
-// ==================================================
-// App shell — 身份辨識、資料抓取／輪詢、寫入動作全部集中在這裡，
-// 5 個分頁都從這裡拿資料，不用各自重複一套邏輯。
-// ==================================================
+function ReviewTab({ people, trip, progress, segments, photos, day1Result, guesses, feedbackHistory, tripFinished }) {
+  if (!tripFinished) {
+    return (
+      <div style={{ paddingBottom: 96 }}>
+        <HeroBanner /><PageTitle>📖 旅行回顧</PageTitle>
+        <Card><div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C", fontSize: 15 }}>旅程還在進行中，結束後這裡會自動生成「旅行成績單」✨</div></Card>
+      </div>
+    );
+  }
+
+  const star = FAMILY.find((p) => p.sheetId === day1Result?.starPersonId);
+  const totalKm = sumAllKm(segments);
+  const unlocked = ACHIEVEMENT_DEFS.filter((a) => a.check({ checkedCount: 9, trip, progress, day1Result, mySheetId: "" }));
+
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <Card style={{ background: `linear-gradient(135deg, ${COLORS.deepGreen}, ${COLORS.plantGreen})`, color: COLORS.warmWhite, textAlign: "center", padding: "24px 18px" }}>
+        <div style={{ fontSize: 14, opacity: 0.9 }}>🛵 旅行成績單</div>
+        <div style={{ fontSize: 22, fontWeight: 800, marginTop: 6 }}>{TRIP.title}</div>
+        <div style={{ fontSize: 15, marginTop: 4, opacity: 0.95 }}>{TRIP.subtitle1}</div>
+      </Card>
+
+      <Card>
+        <SectionTitle>👋 報到紀錄</SectionTitle>
+        {people.map((p) => (
+          <div key={p.id} style={{ fontSize: 15, color: COLORS.ink, padding: "6px 0", borderBottom: "1px solid #F0EAD8" }}>
+            <strong>{p.name}</strong> · 出發 {p.checkinTime ? formatDateTime(p.checkinTime) : "—"} · 到家 {p.homeTime ? formatDateTime(p.homeTime) : "—"}
+          </div>
+        ))}
+      </Card>
+
+      {day1Result && (
+        <Card style={{ background: "#FDF1D6" }}>
+          <SectionTitle>⭐ 今日之星</SectionTitle>
+          <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>{star ? star.name : "—"}</div>
+          <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6 }}>
+            Day 1 實際 {day1Result.totalKm.toFixed(1)} km · 抵達 {formatTime(day1Result.arrivalTime)}
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        <SectionTitle>🛣️ 騎乘里程</SectionTitle>
+        <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>{totalKm.toFixed(1)} km</div>
+        {segments.map((s) => (
+          <div key={s.stopIndex} style={{ fontSize: 14, color: "#8A7A5C", padding: "4px 0" }}>{s.stopName}：{s.km} km</div>
+        ))}
+      </Card>
+
+      <Card>
+        <SectionTitle>🎯 完成任務</SectionTitle>
+        {TASK_DEFS.map((t) => (
+          <div key={t.key} style={{ fontSize: 15, padding: "4px 0" }}>{trip.tasks[t.key] ? "✅" : "⬜"} {t.label}</div>
+        ))}
+      </Card>
+
+      <Card>
+        <SectionTitle>🏆 解鎖成就（{unlocked.length}/{ACHIEVEMENT_DEFS.length}）</SectionTitle>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+          {unlocked.map((a) => <span key={a.key} style={{ fontSize: 14, background: COLORS.cream, borderRadius: 999, padding: "6px 12px" }}>{a.icon} {a.label}</span>)}
+        </div>
+      </Card>
+
+      {photos.length > 0 && (
+        <Card>
+          <SectionTitle>📸 合照精選</SectionTitle>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 8 }}>
+            {photos.slice(0, 6).map((p) => <img key={p.id} src={p.url} alt="" style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 10 }} />)}
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        <SectionTitle>💬 旅途小插曲</SectionTitle>
+        {feedbackHistory.length === 0 ? <div style={{ fontSize: 15, color: "#9A8E6E", marginTop: 6 }}>這趟旅程很順利！</div> : feedbackHistory.map((f, i) => (
+          <div key={i} style={{ fontSize: 15, padding: "4px 0" }}>{f.personName}：{FEEDBACK_TYPES.find((o) => o.key === f.type)?.label}</div>
+        ))}
+      </Card>
+
+      <div style={{ margin: "16px", textAlign: "center", fontSize: 14, color: "#8A7A5C" }}>
+        截圖這頁，傳到 LINE 群組回味吧 📷<br />瓦特鎮家族，明年見！
+      </div>
+    </div>
+  );
+}
+
+function JourneyHome(props) {
+  const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, ...rest } = props;
+  const next = STOPS[rest.progress.currentStop + 1];
+  return (
+    <div style={{ paddingBottom: 96 }}>
+      <HeroBanner />
+      <FeedbackSection feedback={rest.feedback} onRequest={rest.onRequestFeedback} onAcknowledge={rest.onAcknowledgeFeedback} />
+      <JourneyStageCard progress={rest.progress} allHere={rest.checkedCount === 9} segments={rest.segments} onRequestAdvance={() => setPendingAdvance(true)} />
+      <NextUpCard progress={rest.progress} />
+      <ProgressTimeline progress={rest.progress} />
+      <AnnouncementSection announcements={rest.trip.announcements} onPost={rest.onPostAnnouncement} />
+      <WeatherCard /><SafetyCard />
+      <div style={{ margin: "16px 16px 0", padding: "14px 16px", borderRadius: 16, background: `linear-gradient(135deg, ${COLORS.gold}, #F2C463)`, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ fontSize: 24 }}>🥮</div>
+        <div style={{ fontSize: 15, color: "#4A3617", fontWeight: 600, lineHeight: 1.5 }}>{TRIP.bannerTip}</div>
+      </div>
+      {pendingAdvance && (
+        <KmInputModal
+          nextStopName={rest.progress.currentStop === -1 ? STOPS[0].name : (next ? next.name : "")}
+          onCancel={() => setPendingAdvance(false)}
+          onConfirm={(km) => { setPendingAdvance(false); handleConfirmAdvance(km); }}
+        />
+      )}
+    </div>
+  );
+}
+
 const TABS = [
   { key: "checkin", label: "報到", icon: "👋" },
   { key: "journey", label: "旅程", icon: "🏍️" },
   { key: "map", label: "地圖", icon: "📍" },
   { key: "quest", label: "任務", icon: "🎯" },
   { key: "badge", label: "成就", icon: "🏆" },
+  { key: "review", label: "回顧", icon: "📖" },
 ];
 
 function App() {
   const [tab, setTab] = useState("checkin");
   const [myId, setMyId] = useState(null);
   const [identityLoading, setIdentityLoading] = useState(true);
-  const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false, arrivedHome: false })));
-  const [loaded, setLoaded] = useState(false); // true once the Google Sheet has been read successfully at least once
+  const [people, setPeople] = useState(FAMILY.map((p) => ({ ...p, checkedIn: false, arrivedHome: false, checkinTime: "", homeTime: "" })));
+  const [loaded, setLoaded] = useState(false);
   const [feedback, setFeedback] = useState([]);
+  const [feedbackHistory, setFeedbackHistory] = useState([]);
   const [trip, setTrip] = useState(DEFAULT_TRIP);
   const [progress, setProgress] = useState(DEFAULT_PROGRESS);
+  const [guesses, setGuesses] = useState([]);
+  const [segments, setSegments] = useState([]);
+  const [photos, setPhotos] = useState([]);
+  const [day1Result, setDay1Result] = useState(null);
+  const [guessLocked, setGuessLocked] = useState(false);
   const [syncState, setSyncState] = useState("loading");
+  const [pendingAdvance, setPendingAdvance] = useState(false);
   const pollRef = useRef(null);
-  const seededTripRef = useRef(false);
 
   const applyMembers = (members) => {
-    setPeople((prev) =>
-      prev.map((p) => {
-        const row = members.find((m) => m.id === p.sheetId);
-        return row ? { ...p, checkedIn: isTruthy(row.checkedIn), arrivedHome: isTruthy(row.arrivedHome) } : p;
-      })
-    );
+    setPeople((prev) => prev.map((p) => {
+      const row = members.find((m) => m.id === p.sheetId);
+      return row ? { ...p, checkedIn: isTruthy(row.checkedIn), arrivedHome: isTruthy(row.arrivedHome), checkinTime: row.checkinTime || "", homeTime: row.homeTime || "" } : p;
+    }));
   };
 
   const fetchAll = async () => {
     let ok = true;
-
-    // Google Sheet is the ONLY source of truth for 報到／到家／輕量回饋. On
-    // failure we never invent numbers or reset anything — keep whatever was
-    // last successfully loaded and let the next 4-second poll retry.
     try {
-      const { members, feedback: fb, progress: prog } = await fetchSheetData();
-      applyMembers(members);
-      setFeedback(fb);
-      setProgress(prog);
+      const data = await fetchSheetData();
+      applyMembers(data.members);
+      setFeedback(data.feedback);
+      setProgress(data.progress);
+      setGuesses(data.guesses);
+      setSegments(data.segments);
+      setPhotos(data.photos);
+      setDay1Result(data.day1Result);
+      setGuessLocked(data.guessLocked);
+      setTrip({ ...DEFAULT_TRIP, tasks: data.tasks, announcements: data.announcements });
       setLoaded(true);
-    } catch (e) {
-      ok = false;
-    }
-
-    // Trip state (次一站/公告/任務) 跟這次改動無關，維持原樣 — Claude Artifact
-    // Shared Storage（在 GitHub Pages 上本來就不會真的同步，屬已知限制）。
-    try {
-      const res = await window.storage.get(TRIP_KEY, true);
-      const data = res ? JSON.parse(res.value) : null;
-      if (data) {
-        setTrip({ ...DEFAULT_TRIP, ...data, tasks: { ...DEFAULT_TRIP.tasks, ...(data.tasks || {}) } });
-      } else if (!seededTripRef.current) {
-        seededTripRef.current = true;
-        await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
-      }
-    } catch (e) {
-      if (!seededTripRef.current) {
-        seededTripRef.current = true;
-        try {
-          await window.storage.set(TRIP_KEY, JSON.stringify(DEFAULT_TRIP), true);
-        } catch (e2) {}
-      }
-    }
-
+    } catch (e) { ok = false; }
     setSyncState(ok ? "ok" : "error");
   };
 
-  // Identity comes from a per-person link (?who=xiang) — bookmark once, works
-  // forever, no login and no storage needed.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const who = params.get("who");
-    if (who) {
-      const match = FAMILY.find((p) => p.sheetId === who);
-      if (match) setMyId(match.id);
-    }
+    const who = new URLSearchParams(window.location.search).get("who");
+    if (who) { const m = FAMILY.find((p) => p.sheetId === who); if (m) setMyId(m.id); }
     setIdentityLoading(false);
   }, []);
 
@@ -1097,184 +901,54 @@ function App() {
     return () => clearInterval(pollRef.current);
   }, [myId]);
 
-  const handlePickIdentity = (id) => {
-    setMyId(id);
-    const person = FAMILY.find((p) => p.id === id);
-    if (person) {
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set("who", person.sheetId);
-        window.history.replaceState({}, "", url.toString());
-      } catch (e) {}
-    }
-  };
-
-  const handleCheckIn = async () => {
-    const me = FAMILY.find((p) => p.id === myId);
-    if (!me) return;
-    setPeople((prev) => prev.map((p) => (p.id === myId ? { ...p, checkedIn: true } : p))); // instant feedback
-    try {
-      await postToSheet({ action: "checkin", id: me.sheetId });
-      setSyncState("ok");
-      fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const handleCheckInHome = async () => {
-    const me = FAMILY.find((p) => p.id === myId);
-    if (!me) return;
-    setPeople((prev) => prev.map((p) => (p.id === myId ? { ...p, arrivedHome: true } : p))); // instant feedback
-    try {
-      await postToSheet({ action: "checkinHome", id: me.sheetId });
-      setSyncState("ok");
-      fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const handleResetCheckin = async () => {
-    try {
-      await postToSheet({ action: "resetAll" });
-      setSyncState("ok");
-      await fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const handleResetCheckinHome = async () => {
-    try {
-      await postToSheet({ action: "resetAllHome" });
-      setSyncState("ok");
-      await fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const handleAddFeedback = async (type) => {
-    const me = FAMILY.find((p) => p.id === myId);
-    if (!me) return;
-    try {
-      await postToSheet({ action: "addFeedback", personId: me.sheetId, personName: me.name, type });
-      fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const handleResolveFeedback = async (id) => {
-    setFeedback((prev) => prev.filter((f) => String(f.id) !== String(id))); // instant feedback
-    try {
-      await postToSheet({ action: "resolveFeedback", id });
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const handleAdvanceStop = async () => {
-    const nextIndex = Math.min(progress.currentStop + 1, STOPS.length - 1);
-    setProgress({ currentStop: nextIndex }); // instant feedback
-    try {
-      await postToSheet({ action: "setStop", stopIndex: nextIndex });
-      setSyncState("ok");
-      fetchAll();
-    } catch (e) {
-      setSyncState("error");
-    }
-  };
-
-  const writeTrip = async (next) => {
-    setTrip(next); // instant feedback
-    try {
-      await window.storage.set(TRIP_KEY, JSON.stringify(next), true);
-    } catch (e) {}
-  };
-
+  const me = FAMILY.find((p) => p.id === myId);
   const checkedCount = people.filter((p) => p.checkedIn).length;
+  const tripFinished = progress.currentStop >= STOPS.length - 1;
 
-  if (identityLoading) {
-    return (
-      <div style={{ maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream }}>
-        <HeroBanner />
-        <div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C", fontSize: 15 }}>載入中…</div>
-      </div>
-    );
-  }
+  const handleConfirmAdvance = async (km) => {
+    const nextIndex = Math.min(progress.currentStop + 1, STOPS.length - 1);
+    setProgress({ currentStop: nextIndex });
+    try {
+      await postToSheet({ action: "setStop", stopIndex: nextIndex, segmentKm: km, recordedBy: me?.sheetId || "" });
+      setSyncState("ok");
+      fetchAll();
+    } catch (e) { setSyncState("error"); }
+  };
 
-  if (myId === null) {
-    return (
-      <div style={{ maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream }}>
-        <IdentityPicker onPick={handlePickIdentity} />
-      </div>
-    );
-  }
+  const shellStyle = { maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream, fontFamily: '"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', position: "relative" };
+
+  if (identityLoading) return <div style={shellStyle}><HeroBanner /><div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C" }}>載入中…</div></div>;
+  if (myId === null) return <div style={shellStyle}><IdentityPicker onPick={(id) => { setMyId(id); const p = FAMILY.find((x) => x.id === id); if (p) { const u = new URL(window.location.href); u.searchParams.set("who", p.sheetId); window.history.replaceState({}, "", u); } }} /></div>;
+
+  const ctx = { checkedCount, trip, progress, day1Result, mySheetId: me?.sheetId || "" };
 
   return (
-    <div
-      style={{
-        maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream,
-        fontFamily: '"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif',
-        position: "relative",
-      }}
-    >
-      {tab === "checkin" && (
-        <CheckinTab
-          people={people}
-          myId={myId}
-          loaded={loaded}
-          syncState={syncState}
-          onCheckIn={handleCheckIn}
-          onCheckInHome={handleCheckInHome}
-          onResetCheckin={handleResetCheckin}
-          onResetCheckinHome={handleResetCheckinHome}
-        />
-      )}
-      {tab === "journey" && (
-        <JourneyHome
-          people={people}
-          feedback={feedback}
-          trip={trip}
-          progress={progress}
-          myId={myId}
-          checkedCount={checkedCount}
-          onRequestFeedback={handleAddFeedback}
-          onAcknowledgeFeedback={handleResolveFeedback}
-          onAdvance={handleAdvanceStop}
-          writeTrip={writeTrip}
-        />
-      )}
+    <div style={shellStyle}>
+      {tab === "checkin" && <CheckinTab people={people} myId={myId} loaded={loaded} syncState={syncState} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} onSaved={fetchAll}
+        onCheckIn={async () => { await postToSheet({ action: "checkin", id: me.sheetId }); fetchAll(); }}
+        onCheckInHome={async () => { await postToSheet({ action: "checkinHome", id: me.sheetId }); fetchAll(); }}
+        onResetCheckin={async () => { await postToSheet({ action: "resetAll" }); fetchAll(); }}
+        onResetCheckinHome={async () => { await postToSheet({ action: "resetAllHome" }); fetchAll(); }} />}
+      {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} feedback={feedback} trip={trip}
+        pendingAdvance={pendingAdvance} setPendingAdvance={setPendingAdvance} handleConfirmAdvance={handleConfirmAdvance}
+        onRequestFeedback={async (type) => { await postToSheet({ action: "addFeedback", personId: me.sheetId, personName: me.name, type }); fetchAll(); }}
+        onAcknowledgeFeedback={async (id) => { await postToSheet({ action: "resolveFeedback", id }); fetchAll(); }}
+        onPostAnnouncement={async (text, level) => { await postToSheet({ action: "postAnnouncement", text, level }); fetchAll(); }} />}
       {tab === "map" && <MapTab />}
-      {tab === "quest" && (
-        <TaskTab
-          trip={trip}
-          progress={progress}
-          checkedCount={checkedCount}
-          onToggle={(key) => writeTrip({ ...trip, tasks: { ...trip.tasks, [key]: true } })}
-        />
-      )}
-      {tab === "badge" && <AchievementTab ctx={{ checkedCount, trip, progress }} />}
+      {tab === "quest" && <TaskTab trip={trip} progress={progress} checkedCount={checkedCount} photos={photos} myId={myId}
+        onToggle={async (key) => { await postToSheet({ action: "toggleTask", taskKey: key, value: true }); fetchAll(); }}
+        onUploaded={fetchAll} />}
+      {tab === "badge" && <AchievementTab ctx={ctx} />}
+      {tab === "review" && <ReviewTab people={people} trip={trip} progress={progress} segments={segments} photos={photos} day1Result={day1Result} guesses={guesses} feedbackHistory={feedbackHistory} tripFinished={tripFinished} />}
 
-      <div
-        style={{
-          position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 420,
-          background: COLORS.warmWhite, borderTop: "1px solid #E9DFC4", display: "flex", justifyContent: "space-around",
-          padding: "10px 4px 14px", boxShadow: "0 -6px 18px rgba(31,74,61,0.10)",
-        }}
-      >
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 420, background: COLORS.warmWhite, borderTop: "1px solid #E9DFC4", display: "flex", justifyContent: "space-around", padding: "8px 2px 12px", boxShadow: "0 -6px 18px rgba(31,74,61,0.10)" }}>
         {TABS.map((t) => {
           const active = tab === t.key;
+          const locked = t.key === "review" && !tripFinished;
           return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              style={{ background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "2px 8px" }}
-            >
-              <span style={{ fontSize: 22, opacity: active ? 1 : 0.45 }}>{t.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: active ? 800 : 500, color: active ? COLORS.deepGreen : "#B0A480" }}>{t.label}</span>
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", padding: "2px 4px", opacity: locked ? 0.4 : 1 }}>
+              <span style={{ fontSize: 20, opacity: active ? 1 : 0.45 }}>{t.icon}</span>
+              <span style={{ fontSize: 11, fontWeight: active ? 800 : 500, color: active ? COLORS.deepGreen : "#B0A480" }}>{t.label}</span>
             </button>
           );
         })}
@@ -1283,8 +957,7 @@ function App() {
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 </body>
 </html>
