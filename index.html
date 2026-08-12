@@ -76,7 +76,12 @@ async function fetchSheetData() {
   if (!res.ok) throw new Error("GET failed: " + res.status);
   const data = await res.json();
   if (!data || !data.ok || !Array.isArray(data.members)) throw new Error("bad payload");
-  return { members: data.members, feedback: Array.isArray(data.feedback) ? data.feedback : [] };
+  const currentStop = data.progress && typeof data.progress.currentStop !== "undefined" ? Number(data.progress.currentStop) : -1;
+  return {
+    members: data.members,
+    feedback: Array.isArray(data.feedback) ? data.feedback : [],
+    progress: { currentStop: isNaN(currentStop) ? -1 : currentStop },
+  };
 }
 
 // POST body sent as text/plain on purpose — avoids a CORS preflight (OPTIONS)
@@ -148,19 +153,33 @@ async function fetchWeather() {
 }
 
 const DEFAULT_TRIP = {
-  stage: "gathering", // gathering -> departed -> arrived -> completed
-  nextStop: "",
-  nextTime: "",
   tasks: { photo: false, food: false, dayComplete: false, safeArrival: false },
   announcements: [], // { id, level: normal|important|urgent, text, ts }
 };
 
-const STAGE_LABEL = {
-  gathering: { text: "集合中", icon: "🟢" },
-  departed: { text: "前往下一站", icon: "🏍️" },
-  arrived: { text: "停留中", icon: "📍" },
-  completed: { text: "今日行程完成", icon: "✓" },
-};
+// 真實行程站點（使用者提供，不是編造的）。「08:30 旗山早餐大會師」已經由
+// 「報到」分頁的出發報到負責，這裡從離開集合地點開始算。currentStop 是
+// 「目前走到第幾站」的索引（-1 代表還沒出發），存在 Google Sheet 的
+// Progress 分頁，跨手機共用。
+const STOPS = [
+  { id: 0, day: 1, time: "09:10", name: "台3線出發" },
+  { id: 1, day: 1, time: "11:30", name: "伯恭甕缸雞" },
+  { id: 2, day: 1, time: "14:30", name: "古坑好農", note: "時間彈性" },
+  { id: 3, day: 1, time: "16:00", name: "茗鎮民宿" },
+  { id: 4, day: 1, time: "16:30", name: "華山咖啡大街" },
+  { id: 5, day: 1, time: "18:00", name: "華山會館" },
+  { id: 6, day: 2, time: "09:30", name: "民宿出發" },
+  { id: 7, day: 2, time: "10:20", name: "五元兩角" },
+  { id: 8, day: 2, time: "11:30", name: "雲嶺之丘" },
+  { id: 9, day: 2, time: "12:00", name: "午餐" },
+  { id: 10, day: 2, time: "13:30", name: "草嶺下山" },
+  { id: 11, day: 2, time: "約17:00", name: "抵達永康" },
+  { id: 12, day: 2, time: "17:30", name: "東悅坊慶功宴" },
+  { id: 13, day: 2, time: "約19:00", name: "台南組解散" },
+  { id: 14, day: 2, time: "約20:00", name: "萬丹解散" },
+  { id: 15, day: 2, time: "約20:30後", name: "高雄各組返家" },
+];
+const DEFAULT_PROGRESS = { currentStop: -1 };
 
 const TASK_DEFS = [
   { key: "photo", label: "家族合照", icon: "📸", doneLabel: "家族合照完成", cta: "📸 我們拍好了！" },
@@ -201,18 +220,11 @@ const LOCATIONS = [
 
 const ACHIEVEMENT_DEFS = [
   { key: "allGather", label: "全員到齊", icon: "🎉", check: (ctx) => ctx.checkedCount === 9 },
-  { key: "together", label: "全家一起出發", icon: "❤️", check: (ctx) => ctx.trip.stage !== "gathering" },
-  { key: "firstStop", label: "第一站完成", icon: "🏍️", check: (ctx) => ctx.trip.stage === "arrived" || ctx.trip.stage === "completed" },
+  { key: "together", label: "全家一起出發", icon: "❤️", check: (ctx) => ctx.progress.currentStop >= 0 },
+  { key: "firstStop", label: "第一站完成", icon: "🏍️", check: (ctx) => ctx.progress.currentStop >= 1 },
   { key: "photo", label: "家族合照", icon: "📸", check: (ctx) => ctx.trip.tasks.photo },
   { key: "food", label: "今日美食", icon: "🍜", check: (ctx) => ctx.trip.tasks.food },
   { key: "dayComplete", label: "今日旅程完成", icon: "🌄", check: (ctx) => ctx.trip.tasks.dayComplete },
-];
-
-const PROGRESS_STEPS = [
-  { key: "gather", label: "集合", done: (ctx) => ctx.checkedCount === 9 },
-  { key: "depart", label: "出發", done: (ctx) => ctx.trip.stage !== "gathering" },
-  { key: "firstStop", label: "第一站", done: (ctx) => ctx.trip.stage === "arrived" || ctx.trip.stage === "completed" },
-  { key: "dayComplete", label: "完成", done: (ctx) => ctx.trip.tasks.dayComplete || ctx.trip.stage === "completed" },
 ];
 
 const SAFETY_TIPS = ["🪖 安全帽戴好", "🧥 備好兩件式雨衣", "🌧️ 山區可能下雨", "⛽ 確認油量", "🏍️ 保持車距", "❤️ 不趕路，平安最重要"];
@@ -243,9 +255,16 @@ function HeroBanner() {
         <path d="M150 150 L260 150" stroke="#F3E9D2" strokeWidth="2" strokeDasharray="8 8" opacity="0.6" />
       </svg>
       <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, textAlign: "center", fontSize: 32 }}>🛵💨</div>
-      <div style={{ position: "absolute", top: 16, left: 18, right: 18, color: COLORS.warmWhite }}>
-        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: 1, opacity: 0.9 }}>瓦特鎮家族</div>
-        <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+      <div style={{ position: "absolute", top: 14, left: 18, right: 18, color: COLORS.warmWhite }}>
+        <div
+          style={{
+            display: "inline-block", background: "white", borderRadius: 14, padding: "5px 10px 3px",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+          }}
+        >
+          <img src="logo.png" alt="瓦特鎮家族" style={{ height: 30, display: "block" }} />
+        </div>
+        <div style={{ fontSize: 26, fontWeight: 800, marginTop: 8, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
           2026 雲林二日機車小旅行
         </div>
         <div style={{ fontSize: 16, fontWeight: 500, marginTop: 6, opacity: 0.95 }}>中秋・跟家人一起出發</div>
@@ -369,86 +388,47 @@ function IdentityPicker({ onPick }) {
 // ==================================================
 // Phase 2: 下一個重要時間 / 下一站 / 目前旅程狀態 / 全員到齊
 // ==================================================
-function NextUpCard({ trip, editable, onSave }) {
-  const [editing, setEditing] = useState(false);
-  const [stop, setStop] = useState(trip.nextStop);
-  const [time, setTime] = useState(trip.nextTime);
-
-  useEffect(() => {
-    if (!editing) {
-      setStop(trip.nextStop);
-      setTime(trip.nextTime);
-    }
-  }, [trip.nextStop, trip.nextTime, editing]);
-
+function NextUpCard({ progress }) {
+  const next = STOPS[progress.currentStop + 1];
   return (
     <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>⏰ 下一個重要時間</div>
-        {editable && !editing && (
-          <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: COLORS.plantGreen, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            設定
-          </button>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>⏰ 下一個重要時間</div>
+      <div style={{ marginTop: 8 }}>
+        {next ? (
+          <>
+            <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen }}>{next.time}</div>
+            <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>
+              📍 {next.name}
+              {next.note ? <span style={{ fontSize: 13, color: "#9A8E6E", fontWeight: 500 }}>（{next.note}）</span> : null}
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.orange }}>🎉 全部行程都跑完了！</div>
         )}
       </div>
-
-      {editing ? (
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-          <input
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            placeholder="例如 10:30 出發"
-            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }}
-          />
-          <input
-            value={stop}
-            onChange={(e) => setStop(e.target.value)}
-            placeholder="例如 華山・草嶺"
-            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }}
-          />
-          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-            <button
-              onClick={() => { onSave({ nextStop: stop, nextTime: time }); setEditing(false); }}
-              style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", background: COLORS.plantGreen, color: "white", fontWeight: 700, cursor: "pointer" }}
-            >
-              儲存
-            </button>
-            <button
-              onClick={() => setEditing(false)}
-              style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid #DCD3B8", background: "none", color: "#8A7A5C", fontWeight: 700, cursor: "pointer" }}
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen }}>{trip.nextTime || "時間待確認"}</div>
-          <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>
-            📍 {trip.nextStop || "下一站待設定"}
-          </div>
-        </div>
-      )}
     </Card>
   );
 }
 
-function JourneyStageCard({ trip, allHere, onDepart }) {
-  const s = STAGE_LABEL[trip.stage];
+function JourneyStageCard({ progress, allHere, onAdvance }) {
+  const current = progress.currentStop >= 0 ? STOPS[progress.currentStop] : null;
+  const next = STOPS[progress.currentStop + 1];
+  const finished = progress.currentStop === STOPS.length - 1;
+
   return (
     <Card>
       <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>目前旅程狀態</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>
-        {s.icon} {s.text}
+        {finished ? "🎉 今日行程跑完了" : current ? `📍 ${current.name}` : "🟢 集合中"}
       </div>
 
-      {allHere && trip.stage === "gathering" && (
+      {allHere && progress.currentStop === -1 && (
         <div style={{ marginTop: 14 }}>
           <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 17, marginBottom: 10 }}>
             🎉 全員到齊！
           </div>
           <button
-            onClick={onDepart}
+            onClick={onAdvance}
             style={{
               width: "100%", padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800,
               color: "white", background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
@@ -459,24 +439,58 @@ function JourneyStageCard({ trip, allHere, onDepart }) {
           </button>
         </div>
       )}
+
+      {progress.currentStop >= 0 && next && (
+        <button
+          onClick={onAdvance}
+          style={{
+            width: "100%", marginTop: 14, padding: "12px 0", borderRadius: 14, cursor: "pointer",
+            border: `1px solid ${COLORS.plantGreen}`, background: "white", color: COLORS.plantGreen, fontWeight: 700, fontSize: 15,
+          }}
+        >
+          ✅ 抵達下一站：{next.name}
+        </button>
+      )}
     </Card>
   );
 }
 
-function ProgressTimeline({ ctx }) {
+function ProgressTimeline({ progress }) {
+  const [day, setDay] = useState(1);
+  const stops = STOPS.filter((s) => s.day === day);
+
   return (
     <Card>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C", marginBottom: 10 }}>Day 1 旅程進度</div>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        {PROGRESS_STEPS.map((step, i) => {
-          const done = step.done(ctx);
-          const prevDone = i === 0 ? true : PROGRESS_STEPS[i - 1].done(ctx);
-          const current = !done && prevDone;
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>旅程進度</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[1, 2].map((d) => (
+            <button
+              key={d}
+              onClick={() => setDay(d)}
+              style={{
+                fontSize: 13, fontWeight: 700, padding: "4px 12px", borderRadius: 999, cursor: "pointer",
+                border: day === d ? "none" : "1px solid #DCD3B8",
+                background: day === d ? COLORS.deepGreen : "white",
+                color: day === d ? "white" : "#8A7A5C",
+              }}
+            >
+              Day {d}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        {stops.map((s) => {
+          const done = progress.currentStop >= s.id;
+          const isCurrent = progress.currentStop === s.id;
           return (
-            <div key={step.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
-              <div style={{ fontSize: 20 }}>{done ? "🟢" : current ? "🟡" : "⚪"}</div>
-              <div style={{ fontSize: 13, marginTop: 4, fontWeight: 600, color: done ? COLORS.deepGreen : "#9A8E6E", textAlign: "center" }}>
-                {step.label}
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F0EAD8" }}>
+              <div style={{ fontSize: 17 }}>{done ? "🟢" : "⚪"}</div>
+              <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, width: 66 }}>{s.time}</div>
+              <div style={{ fontSize: 15, fontWeight: isCurrent ? 800 : 600, color: done ? COLORS.deepGreen : COLORS.ink }}>
+                {s.name}
+                {s.note ? <span style={{ fontSize: 12, color: "#B0A480" }}>（{s.note}）</span> : null}
               </div>
             </div>
           );
@@ -797,9 +811,8 @@ function CheckinTab({ people, myId, loaded, syncState, onCheckIn, onCheckInHome,
 // ==================================================
 // 旅程 — 現在是純畫面呈現，資料／身份都從 App 上層傳進來
 // ==================================================
-function JourneyHome({ people, feedback, trip, myId, checkedCount, onRequestFeedback, onAcknowledgeFeedback, writeTrip }) {
+function JourneyHome({ people, feedback, trip, progress, myId, checkedCount, onRequestFeedback, onAcknowledgeFeedback, onAdvance, writeTrip }) {
   const allHere = checkedCount === 9;
-  const ctx = { checkedCount, trip };
 
   return (
     <div style={{ paddingBottom: 96 }}>
@@ -807,9 +820,9 @@ function JourneyHome({ people, feedback, trip, myId, checkedCount, onRequestFeed
 
       <FeedbackSection feedback={feedback} onRequest={onRequestFeedback} onAcknowledge={onAcknowledgeFeedback} />
 
-      <JourneyStageCard trip={trip} allHere={allHere} onDepart={() => writeTrip({ ...trip, stage: "departed" })} />
-      <NextUpCard trip={trip} editable onSave={(patch) => writeTrip({ ...trip, ...patch })} />
-      <ProgressTimeline ctx={ctx} />
+      <JourneyStageCard progress={progress} allHere={allHere} onAdvance={onAdvance} />
+      <NextUpCard progress={progress} />
+      <ProgressTimeline progress={progress} />
       <AnnouncementSection
         announcements={trip.announcements}
         onPost={(text, level) => {
@@ -909,10 +922,10 @@ function MapTab() {
 // ==================================================
 // Phase 4: 任務
 // ==================================================
-function TaskTab({ trip, checkedCount, onToggle }) {
+function TaskTab({ trip, progress, checkedCount, onToggle }) {
   const autoTasks = [
     { label: "全員集合", icon: "🟢", done: checkedCount === 9 },
-    { label: "第一站抵達", icon: "📍", done: trip.stage === "arrived" || trip.stage === "completed" },
+    { label: "第一站抵達", icon: "📍", done: progress.currentStop >= 1 },
   ];
   return (
     <div style={{ paddingBottom: 96 }}>
@@ -1012,6 +1025,7 @@ function App() {
   const [loaded, setLoaded] = useState(false); // true once the Google Sheet has been read successfully at least once
   const [feedback, setFeedback] = useState([]);
   const [trip, setTrip] = useState(DEFAULT_TRIP);
+  const [progress, setProgress] = useState(DEFAULT_PROGRESS);
   const [syncState, setSyncState] = useState("loading");
   const pollRef = useRef(null);
   const seededTripRef = useRef(false);
@@ -1032,9 +1046,10 @@ function App() {
     // failure we never invent numbers or reset anything — keep whatever was
     // last successfully loaded and let the next 4-second poll retry.
     try {
-      const { members, feedback: fb } = await fetchSheetData();
+      const { members, feedback: fb, progress: prog } = await fetchSheetData();
       applyMembers(members);
       setFeedback(fb);
+      setProgress(prog);
       setLoaded(true);
     } catch (e) {
       ok = false;
@@ -1160,6 +1175,18 @@ function App() {
     }
   };
 
+  const handleAdvanceStop = async () => {
+    const nextIndex = Math.min(progress.currentStop + 1, STOPS.length - 1);
+    setProgress({ currentStop: nextIndex }); // instant feedback
+    try {
+      await postToSheet({ action: "setStop", stopIndex: nextIndex });
+      setSyncState("ok");
+      fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    }
+  };
+
   const writeTrip = async (next) => {
     setTrip(next); // instant feedback
     try {
@@ -1211,10 +1238,12 @@ function App() {
           people={people}
           feedback={feedback}
           trip={trip}
+          progress={progress}
           myId={myId}
           checkedCount={checkedCount}
           onRequestFeedback={handleAddFeedback}
           onAcknowledgeFeedback={handleResolveFeedback}
+          onAdvance={handleAdvanceStop}
           writeTrip={writeTrip}
         />
       )}
@@ -1222,11 +1251,12 @@ function App() {
       {tab === "quest" && (
         <TaskTab
           trip={trip}
+          progress={progress}
           checkedCount={checkedCount}
           onToggle={(key) => writeTrip({ ...trip, tasks: { ...trip.tasks, [key]: true } })}
         />
       )}
-      {tab === "badge" && <AchievementTab ctx={{ checkedCount, trip }} />}
+      {tab === "badge" && <AchievementTab ctx={{ checkedCount, trip, progress }} />}
 
       <div
         style={{
