@@ -215,7 +215,7 @@ const PROGRESS_STEPS = [
   { key: "dayComplete", label: "完成", done: (ctx) => ctx.trip.tasks.dayComplete || ctx.trip.stage === "completed" },
 ];
 
-const SAFETY_TIPS = ["🪖 安全帽戴好", "🌧️ 山區可能下雨", "🧥 備好兩件式雨衣", "⛽ 確認油量", "🏍️ 保持車距", "❤️ 不趕路，平安最重要"];
+const SAFETY_TIPS = ["🪖 安全帽戴好", "🧥 備好兩件式雨衣", "🌧️ 山區可能下雨", "⛽ 確認油量", "🏍️ 保持車距", "❤️ 不趕路，平安最重要"];
 
 // ==================================================
 // Shared UI pieces (Phase 1, unchanged)
@@ -242,13 +242,13 @@ function HeroBanner() {
         <path d="M0 190 L150 150 L260 150 L400 190 Z" fill="#3A2E22" />
         <path d="M150 150 L260 150" stroke="#F3E9D2" strokeWidth="2" strokeDasharray="8 8" opacity="0.6" />
       </svg>
-      <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, textAlign: "center", fontSize: 30 }}>🛵💨</div>
+      <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, textAlign: "center", fontSize: 32 }}>🛵💨</div>
       <div style={{ position: "absolute", top: 16, left: 18, right: 18, color: COLORS.warmWhite }}>
-        <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1, opacity: 0.9 }}>瓦特鎮家族</div>
-        <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: 1, opacity: 0.9 }}>瓦特鎮家族</div>
+        <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4, lineHeight: 1.25, textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
           2026 雲林二日機車小旅行
         </div>
-        <div style={{ fontSize: 14, fontWeight: 500, marginTop: 6, opacity: 0.95 }}>中秋・跟家人一起出發</div>
+        <div style={{ fontSize: 16, fontWeight: 500, marginTop: 6, opacity: 0.95 }}>中秋・跟家人一起出發</div>
       </div>
     </div>
   );
@@ -258,12 +258,12 @@ function InfoStrip() {
   return (
     <div style={{ display: "flex", gap: 10, margin: "-22px 16px 0", position: "relative", zIndex: 2 }}>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
-        <div style={{ fontSize: 12, color: "#8A7A5C", fontWeight: 600 }}>集合地點</div>
-        <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>📍 旗山早餐店</div>
+        <div style={{ fontSize: 14, color: "#8A7A5C", fontWeight: 600 }}>集合地點</div>
+        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>📍 旗山早餐店</div>
       </div>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
-        <div style={{ fontSize: 12, color: "#8A7A5C", fontWeight: 600 }}>集合時間</div>
-        <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>⏰ 上午 8:30</div>
+        <div style={{ fontSize: 14, color: "#8A7A5C", fontWeight: 600 }}>集合時間</div>
+        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>⏰ 上午 8:30</div>
       </div>
     </div>
   );
@@ -285,8 +285,8 @@ function CheckInGauge({ count, total, label }) {
         />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 26, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{count}/{total}</div>
-        <div style={{ fontSize: 11, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>{gaugeLabel}</div>
+        <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{count}/{total}</div>
+        <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>{gaugeLabel}</div>
       </div>
     </div>
   );
@@ -299,7 +299,7 @@ function Avatar({ person }) {
         style={{
           position: "relative", width: 52, height: 52, borderRadius: "50%", display: "flex",
           alignItems: "center", justifyContent: "center",
-          fontSize: person.initial && person.initial.length > 1 ? 15 : 20,
+          fontSize: person.initial && person.initial.length > 1 ? 17 : 22,
           fontWeight: 800, color: COLORS.deepGreen,
           background: person.checkedIn ? "#E4F1E1" : "#F0EBDD",
           border: person.checkedIn ? `2px solid ${COLORS.plantGreen}` : "2px solid #DCD3B8",
@@ -308,12 +308,12 @@ function Avatar({ person }) {
       >
         {person.initial}
         {person.checkedIn ? (
-          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: COLORS.plantGreen, color: "white", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>✓</div>
+          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: COLORS.plantGreen, color: "white", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>✓</div>
         ) : (
-          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: "#C9BE9F", color: "white", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>⋯</div>
+          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: "#C9BE9F", color: "white", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid " + COLORS.warmWhite }}>⋯</div>
         )}
       </div>
-      <div style={{ fontSize: 12, marginTop: 6, fontWeight: person.self ? 800 : 600, color: person.checkedIn ? COLORS.deepGreen : "#9A8E6E" }}>
+      <div style={{ fontSize: 14, marginTop: 6, fontWeight: person.self ? 800 : 600, color: person.checkedIn ? COLORS.deepGreen : "#9A8E6E" }}>
         {person.name}
       </div>
     </div>
@@ -345,8 +345,8 @@ function IdentityPicker({ onPick }) {
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
       <Card style={{ padding: "24px 18px", textAlign: "center" }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>你是哪一位家人？</div>
-        <div style={{ fontSize: 12, color: "#8A7A5C", marginTop: 6 }}>選好之後，記得把網址列的連結收藏起來，下次直接用</div>
+        <div style={{ fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>你是哪一位家人？</div>
+        <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 6 }}>選好之後，記得把網址列的連結收藏起來，下次直接用</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 18, marginTop: 22, justifyItems: "center" }}>
           {FAMILY.map((p) => (
             <button
@@ -354,10 +354,10 @@ function IdentityPicker({ onPick }) {
               onClick={() => onPick(p.id)}
               style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", width: 62 }}
             >
-              <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: p.initial && p.initial.length > 1 ? 15 : 20, fontWeight: 800, color: COLORS.deepGreen, background: "#F0EBDD", border: "2px solid #DCD3B8" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: p.initial && p.initial.length > 1 ? 17 : 22, fontWeight: 800, color: COLORS.deepGreen, background: "#F0EBDD", border: "2px solid #DCD3B8" }}>
                 {p.initial}
               </div>
-              <div style={{ fontSize: 12, marginTop: 6, fontWeight: 600, color: COLORS.ink }}>{p.name}</div>
+              <div style={{ fontSize: 14, marginTop: 6, fontWeight: 600, color: COLORS.ink }}>{p.name}</div>
             </button>
           ))}
         </div>
@@ -384,9 +384,9 @@ function NextUpCard({ trip, editable, onSave }) {
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>⏰ 下一個重要時間</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>⏰ 下一個重要時間</div>
         {editable && !editing && (
-          <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: COLORS.plantGreen, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: COLORS.plantGreen, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             設定
           </button>
         )}
@@ -398,13 +398,13 @@ function NextUpCard({ trip, editable, onSave }) {
             value={time}
             onChange={(e) => setTime(e.target.value)}
             placeholder="例如 10:30 出發"
-            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 14 }}
+            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }}
           />
           <input
             value={stop}
             onChange={(e) => setStop(e.target.value)}
             placeholder="例如 華山・草嶺"
-            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 14 }}
+            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }}
           />
           <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
             <button
@@ -423,8 +423,8 @@ function NextUpCard({ trip, editable, onSave }) {
         </div>
       ) : (
         <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen }}>{trip.nextTime || "時間待確認"}</div>
-          <div style={{ fontSize: 14, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen }}>{trip.nextTime || "時間待確認"}</div>
+          <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>
             📍 {trip.nextStop || "下一站待設定"}
           </div>
         </div>
@@ -437,20 +437,20 @@ function JourneyStageCard({ trip, allHere, onDepart }) {
   const s = STAGE_LABEL[trip.stage];
   return (
     <Card>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>目前旅程狀態</div>
-      <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>目前旅程狀態</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>
         {s.icon} {s.text}
       </div>
 
       {allHere && trip.stage === "gathering" && (
         <div style={{ marginTop: 14 }}>
-          <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 15, marginBottom: 10 }}>
+          <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 17, marginBottom: 10 }}>
             🎉 全員到齊！
           </div>
           <button
             onClick={onDepart}
             style={{
-              width: "100%", padding: "14px 0", borderRadius: 16, border: "none", fontSize: 17, fontWeight: 800,
+              width: "100%", padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800,
               color: "white", background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
               boxShadow: "0 10px 22px rgba(31,74,61,0.30)", cursor: "pointer",
             }}
@@ -466,7 +466,7 @@ function JourneyStageCard({ trip, allHere, onDepart }) {
 function ProgressTimeline({ ctx }) {
   return (
     <Card>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C", marginBottom: 10 }}>Day 1 旅程進度</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C", marginBottom: 10 }}>Day 1 旅程進度</div>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         {PROGRESS_STEPS.map((step, i) => {
           const done = step.done(ctx);
@@ -474,8 +474,8 @@ function ProgressTimeline({ ctx }) {
           const current = !done && prevDone;
           return (
             <div key={step.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
-              <div style={{ fontSize: 18 }}>{done ? "🟢" : current ? "🟡" : "⚪"}</div>
-              <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600, color: done ? COLORS.deepGreen : "#9A8E6E", textAlign: "center" }}>
+              <div style={{ fontSize: 20 }}>{done ? "🟢" : current ? "🟡" : "⚪"}</div>
+              <div style={{ fontSize: 13, marginTop: 4, fontWeight: 600, color: done ? COLORS.deepGreen : "#9A8E6E", textAlign: "center" }}>
                 {step.label}
               </div>
             </div>
@@ -511,28 +511,28 @@ function WeatherCard() {
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>🌤️ 旗山即時天氣</div>
-        <button onClick={load} style={{ fontSize: 11, color: COLORS.plantGreen, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>🌤️ 旗山即時天氣</div>
+        <button onClick={load} style={{ fontSize: 13, color: COLORS.plantGreen, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
           重新整理
         </button>
       </div>
 
-      {state === "loading" && <div style={{ marginTop: 8, fontSize: 13, color: "#9A8E6E" }}>讀取中…</div>}
-      {state === "error" && <div style={{ marginTop: 8, fontSize: 13, color: COLORS.orange }}>天氣資料暫時讀不到，稍後自動重試</div>}
+      {state === "loading" && <div style={{ marginTop: 8, fontSize: 15, color: "#9A8E6E" }}>讀取中…</div>}
+      {state === "error" && <div style={{ marginTop: 8, fontSize: 15, color: COLORS.orange }}>天氣資料暫時讀不到，稍後自動重試</div>}
 
       {state === "ok" && weather && (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-            <div style={{ fontSize: 34 }}>{info.icon}</div>
+            <div style={{ fontSize: 36 }}>{info.icon}</div>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{Math.round(weather.temp)}°C</div>
-              <div style={{ fontSize: 12, color: "#8A7A5C", fontWeight: 600, marginTop: 3 }}>{info.label}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1 }}>{Math.round(weather.temp)}°C</div>
+              <div style={{ fontSize: 14, color: "#8A7A5C", fontWeight: 600, marginTop: 3 }}>{info.label}</div>
             </div>
           </div>
           {weather.precipProb !== null && (
             <div
               style={{
-                marginTop: 10, fontSize: 13, fontWeight: 700,
+                marginTop: 10, fontSize: 15, fontWeight: 700,
                 color: weather.precipProb >= 50 ? COLORS.orange : COLORS.ink,
               }}
             >
@@ -548,10 +548,10 @@ function WeatherCard() {
 function SafetyCard() {
   return (
     <Card>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>騎車小提醒</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>騎車小提醒</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {SAFETY_TIPS.map((t) => (
-          <div key={t} style={{ fontSize: 12, fontWeight: 600, color: COLORS.ink, background: COLORS.cream, borderRadius: 999, padding: "6px 12px" }}>
+          <div key={t} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, background: COLORS.cream, borderRadius: 999, padding: "6px 12px" }}>
             {t}
           </div>
         ))}
@@ -572,19 +572,19 @@ function AnnouncementSection({ announcements, onPost }) {
   return (
     <Card>
       <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>📢 家族公告</div>
-        <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>📢 家族公告</div>
+        <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
       </button>
 
       {latest ? (
         <div style={{ marginTop: 10, background: ANNOUNCEMENT_LEVELS[latest.level].bg, borderRadius: 12, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[latest.level].color }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[latest.level].color }}>
             {ANNOUNCEMENT_LEVELS[latest.level].label}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{latest.text}</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{latest.text}</div>
         </div>
       ) : (
-        <div style={{ marginTop: 10, fontSize: 13, color: "#9A8E6E" }}>目前沒有公告</div>
+        <div style={{ marginTop: 10, fontSize: 15, color: "#9A8E6E" }}>目前沒有公告</div>
       )}
 
       {open && (
@@ -592,18 +592,18 @@ function AnnouncementSection({ announcements, onPost }) {
           {announcements.length > 1 &&
             announcements.slice(1).map((a) => (
               <div key={a.id} style={{ marginTop: 8, background: ANNOUNCEMENT_LEVELS[a.level].bg, borderRadius: 12, padding: "10px 12px" }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[a.level].color }}>{ANNOUNCEMENT_LEVELS[a.level].label}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{a.text}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[a.level].color }}>{ANNOUNCEMENT_LEVELS[a.level].label}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{a.text}</div>
               </div>
             ))}
 
           <div style={{ marginTop: 14, borderTop: "1px solid #E9DFC4", paddingTop: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#8A7A5C", marginBottom: 6 }}>發布新公告</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#8A7A5C", marginBottom: 6 }}>發布新公告</div>
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="輸入公告內容"
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 14, boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16, boxSizing: "border-box" }}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               {Object.entries(ANNOUNCEMENT_LEVELS).map(([k, v]) => (
@@ -611,7 +611,7 @@ function AnnouncementSection({ announcements, onPost }) {
                   key={k}
                   onClick={() => setLevel(k)}
                   style={{
-                    flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer",
                     border: level === k ? `2px solid ${v.color}` : "1px solid #DCD3B8",
                     background: level === k ? v.bg : "white", color: v.color,
                   }}
@@ -641,15 +641,15 @@ function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
     <>
       {feedback.length > 0 && (
         <Card style={{ background: "#FBF0D6", boxShadow: "0 6px 16px rgba(232,179,74,0.25)" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#B8861F" }}>💬 家人想說一下</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#B8861F" }}>💬 家人想說一下</div>
           {feedback.map((f) => (
             <div key={f.id} style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.ink }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink }}>
                 {f.personName}：{FEEDBACK_TYPES.find((o) => o.key === f.type)?.icon} {FEEDBACK_TYPES.find((o) => o.key === f.type)?.label}
               </div>
               <button
                 onClick={() => onAcknowledge(f.id)}
-                style={{ background: "none", border: "1px solid #B8861F", color: "#B8861F", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                style={{ background: "none", border: "1px solid #B8861F", color: "#B8861F", borderRadius: 999, padding: "4px 10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
               >
                 知道了
               </button>
@@ -660,8 +660,8 @@ function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
 
       <Card>
         <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C" }}>💬 跟家人說一下</div>
-          <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>💬 跟家人說一下</div>
+          <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
         </button>
         {open && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 12 }}>
@@ -669,7 +669,7 @@ function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
               <button
                 key={o.key}
                 onClick={() => { onRequest(o.key); setOpen(false); }}
-                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 13, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}
+                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 15, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}
               >
                 {o.icon} {o.label}
               </button>
@@ -697,7 +697,7 @@ function CheckinBlock({
 
   return (
     <Card>
-      <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.deepGreen, marginBottom: 10 }}>{icon} {title}</div>
+      <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.deepGreen, marginBottom: 10 }}>{icon} {title}</div>
       <CheckInGauge count={count} total={9} label={gaugeLabel} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 16, marginTop: 20, justifyItems: "center" }}>
         {people.map((p) => (
@@ -709,7 +709,7 @@ function CheckinBlock({
         onClick={onCheckIn}
         disabled={selfDone}
         style={{
-          width: "100%", marginTop: 22, padding: "16px 0", borderRadius: 18, border: "none", fontSize: 18, fontWeight: 800, color: "white",
+          width: "100%", marginTop: 22, padding: "16px 0", borderRadius: 18, border: "none", fontSize: 20, fontWeight: 800, color: "white",
           background: selfDone ? "linear-gradient(135deg, #9CC0A8, #7FAF8C)" : `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`,
           boxShadow: selfDone ? "none" : "0 10px 22px rgba(31,74,61,0.35)", transition: "all 0.25s ease", cursor: selfDone ? "default" : "pointer",
         }}
@@ -717,7 +717,7 @@ function CheckinBlock({
         {selfDone ? buttonDoneLabel : buttonPendingLabel}
       </button>
 
-      <div style={{ textAlign: "center", marginTop: 14, fontSize: 13, color: "#8A7A5C", fontWeight: 500, lineHeight: 1.6 }}>
+      <div style={{ textAlign: "center", marginTop: 14, fontSize: 15, color: "#8A7A5C", fontWeight: 500, lineHeight: 1.6 }}>
         {remaining === 0 ? (
           <span style={{ color: COLORS.orange, fontWeight: 700 }}>{allDoneLabel}</span>
         ) : (
@@ -725,7 +725,7 @@ function CheckinBlock({
         )}
       </div>
 
-      <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: syncState === "error" ? COLORS.orange : "#B0A480", fontWeight: 500 }}>
+      <div style={{ textAlign: "center", marginTop: 10, fontSize: 13, color: syncState === "error" ? COLORS.orange : "#B0A480", fontWeight: 500 }}>
         {syncState === "error" ? "同步失敗，稍後自動重試" : "🟢 已同步"}
       </div>
 
@@ -734,13 +734,13 @@ function CheckinBlock({
           <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
             <button
               onClick={() => { onReset(); setConfirmingReset(false); }}
-              style={{ fontSize: 11, fontWeight: 700, color: "white", background: COLORS.red, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
+              style={{ fontSize: 13, fontWeight: 700, color: "white", background: COLORS.red, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
             >
               再按一次，確定{resetLabel}
             </button>
             <button
               onClick={() => setConfirmingReset(false)}
-              style={{ fontSize: 11, fontWeight: 700, color: "#8A7A5C", background: "none", border: "1px solid #DCD3B8", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
+              style={{ fontSize: 13, fontWeight: 700, color: "#8A7A5C", background: "none", border: "1px solid #DCD3B8", borderRadius: 999, padding: "6px 14px", cursor: "pointer" }}
             >
               取消
             </button>
@@ -748,7 +748,7 @@ function CheckinBlock({
         ) : (
           <button
             onClick={() => setConfirmingReset(true)}
-            style={{ fontSize: 11, color: "#B0A480", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
+            style={{ fontSize: 13, color: "#B0A480", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
           >
             {resetLabel}
           </button>
@@ -766,7 +766,7 @@ function CheckinTab({ people, myId, loaded, syncState, onCheckIn, onCheckInHome,
 
       {!loaded ? (
         <Card>
-          <div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C", fontSize: 13, fontWeight: 600 }}>
+          <div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C", fontSize: 15, fontWeight: 600 }}>
             {syncState === "error" ? "尚未連線，同步失敗，稍後自動重試" : "同步中，正在連接 Google 試算表…"}
           </div>
         </Card>
@@ -804,7 +804,6 @@ function JourneyHome({ people, feedback, trip, myId, checkedCount, onRequestFeed
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
-      <InfoStrip />
 
       <FeedbackSection feedback={feedback} onRequest={onRequestFeedback} onAcknowledge={onAcknowledgeFeedback} />
 
@@ -822,8 +821,8 @@ function JourneyHome({ people, feedback, trip, myId, checkedCount, onRequestFeed
       <SafetyCard />
 
       <div style={{ margin: "16px 16px 0", padding: "14px 16px", borderRadius: 16, background: `linear-gradient(135deg, ${COLORS.gold}, #F2C463)`, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 6px 14px rgba(232,179,74,0.35)" }}>
-        <div style={{ fontSize: 22 }}>🥮</div>
-        <div style={{ fontSize: 13, color: "#4A3617", fontWeight: 600, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 24 }}>🥮</div>
+        <div style={{ fontSize: 15, color: "#4A3617", fontWeight: 600, lineHeight: 1.5 }}>
           中秋連假機車小旅行，記得帶好安全帽和防曬，路上互相照應喔！
         </div>
       </div>
@@ -861,11 +860,11 @@ function MapTab() {
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
-      <div style={{ margin: "18px 16px 0", fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>📍 旅行地圖</div>
+      <div style={{ margin: "18px 16px 0", fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>📍 旅行地圖</div>
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div ref={mapElRef} style={{ width: "100%", height: 260 }} />
-        <div style={{ padding: "10px 14px", fontSize: 11, color: "#9A8E6E" }}>
+        <div style={{ padding: "10px 14px", fontSize: 13, color: "#9A8E6E" }}>
           圖釘目前只有「集合地點」是已知位置(約略位置，非精確門口)；其他地點確定後會再補上
         </div>
       </Card>
@@ -874,30 +873,30 @@ function MapTab() {
         <Card key={loc.type} style={{ padding: "14px 16px" }}>
           <button onClick={() => setOpenIdx(openIdx === i ? null : i)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 20 }}>{loc.icon}</div>
+              <div style={{ fontSize: 22 }}>{loc.icon}</div>
               <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 11, color: "#8A7A5C", fontWeight: 600 }}>{loc.type}</div>
-                <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: 700 }}>{loc.configured ? loc.name : "待設定"}</div>
+                <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600 }}>{loc.type}</div>
+                <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700 }}>{loc.configured ? loc.name : "待設定"}</div>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: COLORS.plantGreen, fontWeight: 700 }}>{openIdx === i ? "收合" : "詳情"}</div>
+            <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{openIdx === i ? "收合" : "詳情"}</div>
           </button>
           {openIdx === i && (
             <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #E9DFC4" }}>
               {loc.configured ? (
                 <>
-                  <div style={{ fontSize: 13, color: COLORS.ink, lineHeight: 1.6 }}>{loc.desc}</div>
+                  <div style={{ fontSize: 15, color: COLORS.ink, lineHeight: 1.6 }}>{loc.desc}</div>
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.name)}`}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ display: "inline-block", marginTop: 10, fontSize: 13, fontWeight: 700, color: "white", background: COLORS.deepGreen, borderRadius: 999, padding: "8px 16px", textDecoration: "none" }}
+                    style={{ display: "inline-block", marginTop: 10, fontSize: 15, fontWeight: 700, color: "white", background: COLORS.deepGreen, borderRadius: 999, padding: "8px 16px", textDecoration: "none" }}
                   >
                     📍 開啟手機地圖
                   </a>
                 </>
               ) : (
-                <div style={{ fontSize: 13, color: "#9A8E6E" }}>這裡目前是 Prototype，尚未接上正式資料服務。</div>
+                <div style={{ fontSize: 15, color: "#9A8E6E" }}>這裡目前是 Prototype，尚未接上正式資料服務。</div>
               )}
             </div>
           )}
@@ -918,33 +917,33 @@ function TaskTab({ trip, checkedCount, onToggle }) {
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
-      <div style={{ margin: "18px 16px 0", fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>🎯 今日任務</div>
+      <div style={{ margin: "18px 16px 0", fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>🎯 今日任務</div>
 
       <Card>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>自動追蹤</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>自動追蹤</div>
         {autoTasks.map((t) => (
           <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
-            <div style={{ fontSize: 18 }}>{t.done ? "✅" : "⬜"}</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: t.done ? COLORS.deepGreen : COLORS.ink }}>{t.icon} {t.label}</div>
+            <div style={{ fontSize: 20 }}>{t.done ? "✅" : "⬜"}</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: t.done ? COLORS.deepGreen : COLORS.ink }}>{t.icon} {t.label}</div>
           </div>
         ))}
       </Card>
 
       <Card>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>今天要一起完成</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>今天要一起完成</div>
         {TASK_DEFS.map((t) => {
           const done = trip.tasks[t.key];
           return (
             <div key={t.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #F0EAD8" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: done ? COLORS.deepGreen : COLORS.ink }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: done ? COLORS.deepGreen : COLORS.ink }}>
                 {t.icon} {done ? t.doneLabel : t.label}
               </div>
               {done ? (
-                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.plantGreen }}>✓ 完成啦！</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.plantGreen }}>✓ 完成啦！</div>
               ) : (
                 <button
                   onClick={() => onToggle(t.key)}
-                  style={{ fontSize: 12, fontWeight: 700, color: "white", background: COLORS.plantGreen, border: "none", borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}
+                  style={{ fontSize: 14, fontWeight: 700, color: "white", background: COLORS.plantGreen, border: "none", borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}
                 >
                   {t.cta}
                 </button>
@@ -964,7 +963,7 @@ function AchievementTab({ ctx }) {
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
-      <div style={{ margin: "18px 16px 0", fontSize: 17, fontWeight: 800, color: COLORS.deepGreen }}>🏆 旅程成就</div>
+      <div style={{ margin: "18px 16px 0", fontSize: 19, fontWeight: 800, color: COLORS.deepGreen }}>🏆 旅程成就</div>
       <Card>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 18, justifyItems: "center" }}>
           {ACHIEVEMENT_DEFS.map((a) => {
@@ -973,7 +972,7 @@ function AchievementTab({ ctx }) {
               <div key={a.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 78 }}>
                 <div
                   style={{
-                    width: 60, height: 60, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
+                    width: 60, height: 60, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
                     background: unlocked ? "#FDF1D6" : "#F0EBDD",
                     border: unlocked ? `2px solid ${COLORS.gold}` : "2px solid #DCD3B8",
                     opacity: unlocked ? 1 : 0.4,
@@ -981,7 +980,7 @@ function AchievementTab({ ctx }) {
                 >
                   {a.icon}
                 </div>
-                <div style={{ fontSize: 11, marginTop: 6, fontWeight: 700, textAlign: "center", color: unlocked ? COLORS.deepGreen : "#9A8E6E" }}>
+                <div style={{ fontSize: 13, marginTop: 6, fontWeight: 700, textAlign: "center", color: unlocked ? COLORS.deepGreen : "#9A8E6E" }}>
                   {a.label}
                 </div>
               </div>
@@ -1174,7 +1173,7 @@ function App() {
     return (
       <div style={{ maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream }}>
         <HeroBanner />
-        <div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C", fontSize: 13 }}>載入中…</div>
+        <div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C", fontSize: 15 }}>載入中…</div>
       </div>
     );
   }
@@ -1244,8 +1243,8 @@ function App() {
               onClick={() => setTab(t.key)}
               style={{ background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "2px 8px" }}
             >
-              <span style={{ fontSize: 20, opacity: active ? 1 : 0.45 }}>{t.icon}</span>
-              <span style={{ fontSize: 11, fontWeight: active ? 800 : 500, color: active ? COLORS.deepGreen : "#B0A480" }}>{t.label}</span>
+              <span style={{ fontSize: 22, opacity: active ? 1 : 0.45 }}>{t.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: active ? 800 : 500, color: active ? COLORS.deepGreen : "#B0A480" }}>{t.label}</span>
             </button>
           );
         })}
