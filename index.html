@@ -658,7 +658,7 @@ function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
         </Card>
       )}
 
-      <Card>
+      <Card style={{ padding: "16px 16px 32px" }}>
         <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C" }}>💬 跟家人說一下</div>
           <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
