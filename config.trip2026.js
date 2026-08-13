@@ -33,12 +33,34 @@ const TRIP = {
     { id: 14, day: 2, time: "約20:00", name: "萬丹解散" },
     { id: 15, day: 2, time: "約20:30後", name: "高雄各組返家" },
   ],
+  // 地圖分頁：名稱對應 stops，僅在有 lat/lng 時設 configured: true
+  // 若要新增地點座標，在對應 stop 加上 lat、lng 後將 configured 改為 true
   locations: [
-    { type: "集合地點", icon: "📍", name: "旗山早餐店", desc: "8:30 準時集合，記得吃早餐再出發！", configured: true, lat: 22.8724, lng: 120.4297 },
-    { type: "景點", icon: "🌿", name: "", desc: "", configured: false },
-    { type: "餐廳", icon: "🍜", name: "", desc: "", configured: false },
-    { type: "住宿", icon: "🏠", name: "茗鎮民宿", desc: "Day 1 住宿", configured: false },
-    { type: "下一站", icon: "🏍️", name: "", desc: "", configured: false },
+    {
+      type: "集合地點", icon: "📍", stopId: null,
+      name: "旗山早餐店", desc: "8:30 準時集合，記得吃早餐再出發！",
+      configured: true, lat: 22.8724, lng: 120.4297,
+    },
+    {
+      type: "景點", icon: "🌿", stopId: 2,
+      name: "古坑好農", desc: "Day 1 · 14:30（時間彈性）",
+      configured: false,
+    },
+    {
+      type: "餐廳", icon: "🍜", stopId: 1,
+      name: "伯恭甕缸雞", desc: "Day 1 · 11:30",
+      configured: false,
+    },
+    {
+      type: "住宿", icon: "🏠", stopId: 3,
+      name: "茗鎮民宿", desc: "Day 1 · 16:00 住宿",
+      configured: false,
+    },
+    {
+      type: "下一站", icon: "🏍️", dynamicNext: true,
+      name: "", desc: "依旅程進度顯示下一站",
+      configured: false,
+    },
   ],
   bannerTip: "中秋連假機車小旅行，記得帶好安全帽和防曬，路上互相照應喔！",
 };

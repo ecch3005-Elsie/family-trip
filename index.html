@@ -97,6 +97,69 @@ function formatTime(iso) {
   return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
+function formatGuessTime(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  const str = String(value).trim();
+  if (/^\d{1,2}:\d{2}$/.test(str)) return str;
+  if (str.indexOf("T") >= 0) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    }
+  }
+  const parts = str.split(":");
+  if (parts.length >= 2 && /^\d+$/.test(parts[0])) {
+    return String(Number(parts[0])).padStart(2, "0") + ":" + String(Number(parts[1] || 0)).padStart(2, "0");
+  }
+  return str;
+}
+
+function guessTimeToMinutes(value) {
+  const t = formatGuessTime(value);
+  if (t === "—") return 0;
+  const parts = t.split(":");
+  return Number(parts[0]) * 60 + Number(parts[1] || 0);
+}
+
+function googleMapsNavUrl(loc) {
+  if (loc.lat != null && loc.lng != null) {
+    return "https://www.google.com/maps/dir/?api=1&destination=" + loc.lat + "," + loc.lng;
+  }
+  if (loc.name) {
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(loc.name);
+  }
+  return null;
+}
+
+function resolveLocationEntry(loc, progress) {
+  if (loc.dynamicNext) {
+    const next = STOPS[(progress?.currentStop ?? -1) + 1];
+    if (!next) {
+      return { ...loc, name: "行程已完成", desc: "全部站點都跑完了", configured: false, lat: null, lng: null };
+    }
+    const hasCoords = next.lat != null && next.lng != null;
+    return {
+      ...loc,
+      name: next.name,
+      desc: "Day " + next.day + " · " + next.time + (next.note ? "（" + next.note + "）" : ""),
+      lat: next.lat,
+      lng: next.lng,
+      configured: hasCoords,
+    };
+  }
+  if (loc.stopId != null) {
+    const stop = STOPS.find((s) => s.id === loc.stopId);
+    if (stop && stop.lat != null && stop.lng != null) {
+      return { ...loc, lat: stop.lat, lng: stop.lng, configured: true };
+    }
+  }
+  return loc;
+}
+
+function resolveLocations(progress) {
+  return LOCATIONS.map((loc) => resolveLocationEntry(loc, progress));
+}
+
 function formatDateTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -133,32 +196,31 @@ function Card({ children, style }) {
 function HeroBanner() {
   return (
     <div style={{
-      position: "relative", height: 188, overflow: "hidden",
-      background: `linear-gradient(180deg, ${COLORS.deepGreen} 0%, ${COLORS.plantGreen} 62%, ${COLORS.gold} 100%)`,
+      position: "relative", height: 135, overflow: "hidden",
+      background: `linear-gradient(180deg, ${COLORS.deepGreen} 0%, ${COLORS.plantGreen} 68%, ${COLORS.gold} 100%)`,
     }}>
-      <svg viewBox="0 0 400 200" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-        <path d="M0 140 L60 100 L120 135 L180 90 L240 138 L300 105 L400 140 L400 200 L0 200 Z" fill="#164235" opacity="0.55" />
-        <path d="M0 160 L80 120 L150 160 L230 115 L320 160 L400 130 L400 200 L0 200 Z" fill="#0F332A" opacity="0.85" />
-        <path d="M0 200 L150 160 L260 160 L400 200 Z" fill="#3A2E22" />
-        <path d="M150 160 L260 160" stroke="#F3E9D2" strokeWidth="2" strokeDasharray="8 8" opacity="0.6" />
+      <svg viewBox="0 80 400 120" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        <path d="M0 140 L60 100 L120 135 L180 90 L240 138 L300 105 L400 140 L400 200 L0 200 Z" fill="#164235" opacity="0.5" />
+        <path d="M0 160 L80 120 L150 160 L230 115 L320 160 L400 130 L400 200 L0 200 Z" fill="#0F332A" opacity="0.75" />
+        <path d="M0 200 L150 175 L260 175 L400 200 Z" fill="#3A2E22" />
       </svg>
-      <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", fontSize: 28 }}>🛵💨</div>
-      <div style={{ position: "absolute", top: 14, left: 16, right: 16, color: COLORS.warmWhite }}>
-        <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.25, textAlign: "center", textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+      <div style={{ position: "absolute", top: 10, left: 14, right: 14, color: COLORS.warmWhite }}>
+        <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25, textAlign: "center", textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
           {TRIP.title}
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 8 }}>
           <div style={{
             flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            width: 56, height: 56, borderRadius: "50%", background: "white",
+            width: 50, height: 50, borderRadius: "50%", background: "white",
             border: `3px solid ${COLORS.gold}`, boxShadow: "0 4px 14px rgba(0,0,0,0.25)", overflow: "hidden",
           }}>
-            <img src="logo.png" alt="瓦特鎮家族" style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />
+            <img src="logo.png" alt="瓦特鎮家族" style={{ width: 40, height: 40, objectFit: "contain", display: "block" }} />
           </div>
-          <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.98 }}>{TRIP.subtitle1}</div>
-            <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2, opacity: 0.92 }}>{TRIP.subtitle2}</div>
+          <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.98, lineHeight: 1.3 }}>{TRIP.subtitle1}</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginTop: 1, opacity: 0.92, lineHeight: 1.3 }}>{TRIP.subtitle2}</div>
           </div>
+          <div style={{ flexShrink: 0, fontSize: 38, lineHeight: 1, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}>🛵</div>
         </div>
       </div>
     </div>
@@ -167,7 +229,7 @@ function HeroBanner() {
 
 function InfoStrip() {
   return (
-    <div style={{ display: "flex", gap: 10, margin: "-22px 16px 0", position: "relative", zIndex: 2 }}>
+    <div style={{ display: "flex", gap: 10, margin: "-18px 16px 0", position: "relative", zIndex: 2 }}>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
         <SectionTitle>📍 集合地點</SectionTitle>
         <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{TRIP.meeting.place}</div>
@@ -247,7 +309,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
   const me = FAMILY.find((p) => p.id === myId);
   const myGuess = guesses.find((g) => g.personId === me?.sheetId);
   const [km, setKm] = useState(myGuess ? String(myGuess.guessKm) : "");
-  const [time, setTime] = useState(myGuess?.guessTime || "16:00");
+  const [time, setTime] = useState(formatGuessTime(myGuess?.guessTime) !== "—" ? formatGuessTime(myGuess?.guessTime) : "16:00");
   const [saving, setSaving] = useState(false);
 
   if (day1Result) {
@@ -255,7 +317,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
     const ranked = guesses.map((g) => {
       const actualMin = new Date(day1Result.arrivalTime).getHours() * 60 + new Date(day1Result.arrivalTime).getMinutes();
       const kmErr = Math.abs(g.guessKm - day1Result.totalKm);
-      const timeErr = Math.abs((Number(String(g.guessTime).split(":")[0]) * 60 + Number(String(g.guessTime).split(":")[1] || 0)) - actualMin);
+      const timeErr = Math.abs(guessTimeToMinutes(g.guessTime) - actualMin);
       return { ...g, score: kmErr + timeErr / 10 };
     }).sort((a, b) => a.score - b.score);
     return (
@@ -272,7 +334,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
             {ranked.map((g, i) => (
               <div key={g.personId} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.ink, padding: "5px 0", fontWeight: g.personId === day1Result.starPersonId ? 800 : 600 }}>
                 <span>{i + 1}. {g.personName}{g.personId === day1Result.starPersonId ? " ⭐" : ""}</span>
-                <span>{g.guessKm} km · {g.guessTime}</span>
+                <span>{g.guessKm} km · {formatGuessTime(g.guessTime)}</span>
               </div>
             ))}
           </div>
@@ -286,7 +348,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
       <Card>
         <SectionTitle>🎲 出發前猜謎（已送出）</SectionTitle>
         <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 10, lineHeight: 1.6 }}>
-          你的猜測：<strong>{myGuess.guessKm} km</strong> · <strong>{myGuess.guessTime}</strong>
+          你的猜測：<strong>{myGuess.guessKm} km</strong> · <strong>{formatGuessTime(myGuess.guessTime)}</strong>
         </div>
         <div style={{ fontSize: 13, color: "#8A7A5C", marginTop: 8 }}>
           {guessLocked ? "已出發，等待抵達住宿揭曉答案！" : "已鎖定，送出後不可更改。出發後統一揭曉！"}
@@ -305,7 +367,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
         <div style={{ fontSize: 15, color: "#8A7A5C", marginTop: 8 }}>已出發，等待抵達住宿揭曉答案！</div>
         {myGuess && (
           <div style={{ marginTop: 10, fontSize: 15, color: COLORS.ink }}>
-            你的猜測：{myGuess.guessKm} km · {myGuess.guessTime}
+            你的猜測：{myGuess.guessKm} km · {formatGuessTime(myGuess.guessTime)}
           </div>
         )}
       </Card>
@@ -698,39 +760,60 @@ function TaskTab({ trip, progress, checkedCount, photos, myId, onToggle, onUploa
   );
 }
 
-function MapTab() {
+function MapTab({ progress }) {
   const [openIdx, setOpenIdx] = useState(null);
   const mapElRef = useRef(null);
   const mapObjRef = useRef(null);
+  const locations = resolveLocations(progress);
   useEffect(() => {
-    if (!mapElRef.current || mapObjRef.current || typeof L === "undefined") return;
-    const pins = LOCATIONS.filter((l) => l.configured && l.lat && l.lng);
+    if (!mapElRef.current || typeof L === "undefined") return;
+    if (mapObjRef.current) {
+      mapObjRef.current.remove();
+      mapObjRef.current = null;
+    }
+    const pins = locations.filter((l) => l.configured && l.lat != null && l.lng != null);
     const center = pins.length ? [pins[0].lat, pins[0].lng] : [QISHAN_LAT, QISHAN_LNG];
-    const map = L.map(mapElRef.current).setView(center, 14);
+    const map = L.map(mapElRef.current).setView(center, pins.length > 1 ? 11 : 14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(map);
     pins.forEach((loc) => L.marker([loc.lat, loc.lng]).addTo(map).bindPopup(loc.name));
+    if (pins.length > 1) {
+      const bounds = L.latLngBounds(pins.map((p) => [p.lat, p.lng]));
+      map.fitBounds(bounds, { padding: [24, 24] });
+    }
     mapObjRef.current = map;
-    return () => { map.remove(); mapObjRef.current = null; };
-  }, []);
+    return () => { if (mapObjRef.current) { mapObjRef.current.remove(); mapObjRef.current = null; } };
+  }, [progress.currentStop]);
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner /><PageTitle>📍 旅行地圖</PageTitle>
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div ref={mapElRef} style={{ width: "100%", height: 260 }} />
       </Card>
-      {LOCATIONS.map((loc, i) => (
-        <Card key={loc.type} style={{ padding: "14px 16px" }}>
-          <button onClick={() => setOpenIdx(openIdx === i ? null : i)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", cursor: "pointer", padding: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 22 }}>{loc.icon}</div>
-              <div style={{ textAlign: "left" }}>
+      {locations.map((loc, i) => {
+        const navUrl = googleMapsNavUrl(loc);
+        const showName = loc.name || "待設定";
+        return (
+          <Card key={loc.type + i} style={{ padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ fontSize: 22, lineHeight: 1.2 }}>{loc.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <SectionTitle>{loc.type}</SectionTitle>
-                <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700 }}>{loc.configured ? loc.name : "待設定"}</div>
+                <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{showName}</div>
+                {loc.desc ? <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 4, lineHeight: 1.4 }}>{loc.desc}</div> : null}
+                {!loc.configured && loc.name ? (
+                  <div style={{ fontSize: 12, color: "#B0A480", marginTop: 6 }}>地圖 pin 待補座標（可在 config.trip2026.js 的 stops 加上 lat/lng）</div>
+                ) : null}
+                {navUrl ? (
+                  <a href={navUrl} target="_blank" rel="noopener noreferrer" style={{
+                    display: "inline-block", marginTop: 10, padding: "8px 14px", borderRadius: 999,
+                    background: COLORS.plantGreen, color: "white", fontSize: 14, fontWeight: 700, textDecoration: "none",
+                  }}>🧭 Google Maps 導航</a>
+                ) : null}
               </div>
             </div>
-          </button>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -972,7 +1055,7 @@ function App() {
         onRequestFeedback={async (type) => { await postToSheet({ action: "addFeedback", personId: me.sheetId, personName: me.name, type }); fetchAll(); }}
         onAcknowledgeFeedback={async (id) => { await postToSheet({ action: "resolveFeedback", id }); fetchAll(); }}
         onPostAnnouncement={async (text, level) => { await postToSheet({ action: "postAnnouncement", text, level }); fetchAll(); }} />}
-      {tab === "map" && <MapTab />}
+      {tab === "map" && <MapTab progress={progress} />}
       {tab === "quest" && <TaskTab trip={trip} progress={progress} checkedCount={checkedCount} photos={photos} myId={myId}
         onToggle={async (key) => { await postToSheet({ action: "toggleTask", taskKey: key, value: true }); fetchAll(); }}
         onUploaded={fetchAll} />}
