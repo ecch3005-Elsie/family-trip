@@ -12,17 +12,14 @@
 <meta name="apple-mobile-web-app-title" content="瓦特鎮家族" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <link rel="icon" href="icon-192.png" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   html, body { margin: 0; padding: 0; background: #F3E9D2; overscroll-behavior: none; }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  .leaflet-container { font-family: inherit; }
   input, button { font-family: inherit; }
 </style>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="config.template.js"></script>
 <script src="config.trip2026.js"></script>
 </head>
@@ -158,6 +155,83 @@ function resolveLocationEntry(loc, progress) {
 
 function resolveLocations(progress) {
   return LOCATIONS.map((loc) => resolveLocationEntry(loc, progress));
+}
+
+function stopRouteIcon(name) {
+  if (!name) return "📍";
+  if (/出發|集合|早餐/.test(name)) return "🚩";
+  if (/民宿|住宿/.test(name)) return "🏠";
+  if (/雞|午餐|宴|餐/.test(name)) return "🍜";
+  if (/解散|返家|抵達/.test(name)) return "🏁";
+  if (/好農|咖啡|雲嶺|五元|草嶺|會館/.test(name)) return "🌿";
+  return "🏍️";
+}
+
+function JourneyRouteDiagram() {
+  const days = [1, 2];
+  return (
+    <div style={{
+      aspectRatio: "16 / 9",
+      background: `linear-gradient(160deg, ${COLORS.deepGreen} 0%, ${COLORS.plantGreen} 38%, #6FA67A 62%, ${COLORS.cream} 100%)`,
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        position: "absolute", inset: 0, opacity: 0.12, pointerEvents: "none",
+        backgroundImage: "repeating-linear-gradient(135deg, transparent, transparent 18px, rgba(255,255,255,0.35) 18px, rgba(255,255,255,0.35) 20px)",
+      }} />
+      <div style={{ position: "relative", zIndex: 1, padding: "10px 12px 8px", textAlign: "center" }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.gold, letterSpacing: 0.5, textShadow: "0 1px 3px rgba(0,0,0,0.2)" }}>
+          {TRIP.title}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.warmWhite, marginTop: 2, textShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
+          旅程路線圖
+        </div>
+      </div>
+      <div style={{
+        position: "relative", zIndex: 1, display: "flex", gap: 8,
+        padding: "0 10px 10px", height: "calc(100% - 52px)", overflowX: "auto", WebkitOverflowScrolling: "touch",
+      }}>
+        {days.map((day) => {
+          const stops = STOPS.filter((s) => s.day === day && s.name);
+          return (
+            <div key={day} style={{
+              flex: "0 0 auto", width: "calc(50% - 4px)", minWidth: 148,
+              background: "rgba(251,246,236,0.92)", borderRadius: 14,
+              padding: "8px 8px 10px", boxShadow: "0 4px 14px rgba(31,74,61,0.18)",
+            }}>
+              <div style={{
+                display: "inline-block", fontSize: 11, fontWeight: 800, color: COLORS.deepGreen,
+                background: COLORS.gold, borderRadius: 999, padding: "3px 10px", marginBottom: 6,
+              }}>Day {day}</div>
+              {stops.map((stop, idx) => (
+                <React.Fragment key={stop.id}>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: COLORS.warmWhite, borderRadius: 10, padding: "5px 7px",
+                    border: `1px solid ${COLORS.cream}`, boxShadow: "0 1px 4px rgba(31,74,61,0.06)",
+                  }}>
+                    <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>{stopRouteIcon(stop.name)}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.ink, lineHeight: 1.25, wordBreak: "break-word" }}>{stop.name}</div>
+                      <div style={{ fontSize: 10, color: "#8A7A5C", marginTop: 1 }}>{stop.time}{stop.note ? " · " + stop.note : ""}</div>
+                    </div>
+                  </div>
+                  {idx < stops.length - 1 ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "2px 0", color: COLORS.plantGreen }}>
+                      <div style={{ width: 2, height: 6, background: COLORS.plantGreen, borderRadius: 1, opacity: 0.5 }} />
+                      <div style={{ fontSize: 11, lineHeight: 1, opacity: 0.85 }}>🏍️</div>
+                      <div style={{ width: 2, height: 6, background: COLORS.plantGreen, borderRadius: 1, opacity: 0.5 }} />
+                    </div>
+                  ) : null}
+                </React.Fragment>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function formatDateTime(iso) {
@@ -824,33 +898,12 @@ function TaskTab({ trip, progress, checkedCount, photos, myId, onToggle, onUploa
 }
 
 function MapTab({ progress }) {
-  const [openIdx, setOpenIdx] = useState(null);
-  const mapElRef = useRef(null);
-  const mapObjRef = useRef(null);
   const locations = resolveLocations(progress);
-  useEffect(() => {
-    if (!mapElRef.current || typeof L === "undefined") return;
-    if (mapObjRef.current) {
-      mapObjRef.current.remove();
-      mapObjRef.current = null;
-    }
-    const pins = locations.filter((l) => l.configured && l.lat != null && l.lng != null);
-    const center = pins.length ? [pins[0].lat, pins[0].lng] : [QISHAN_LAT, QISHAN_LNG];
-    const map = L.map(mapElRef.current).setView(center, pins.length > 1 ? 11 : 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(map);
-    pins.forEach((loc) => L.marker([loc.lat, loc.lng]).addTo(map).bindPopup(loc.name));
-    if (pins.length > 1) {
-      const bounds = L.latLngBounds(pins.map((p) => [p.lat, p.lng]));
-      map.fitBounds(bounds, { padding: [24, 24] });
-    }
-    mapObjRef.current = map;
-    return () => { if (mapObjRef.current) { mapObjRef.current.remove(); mapObjRef.current = null; } };
-  }, [progress.currentStop]);
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner /><PageTitle>📍 旅行地圖</PageTitle>
       <Card style={{ padding: 0, overflow: "hidden" }}>
-        <div ref={mapElRef} style={{ width: "100%", height: 260 }} />
+        <JourneyRouteDiagram />
       </Card>
       {locations.map((loc, i) => {
         const navUrl = googleMapsNavUrl(loc);
