@@ -258,19 +258,24 @@ function HeroBanner() {
         <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25, textAlign: "center", textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
           {TRIP.title}
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 8 }}>
-          <div style={{
-            flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            width: 50, height: 50, borderRadius: "50%", background: "white",
-            border: `3px solid ${COLORS.gold}`, boxShadow: "0 4px 14px rgba(0,0,0,0.25)", overflow: "hidden",
-          }}>
-            <img src="logo.png" alt="瓦特鎮家族" style={{ width: 40, height: 40, objectFit: "contain", display: "block" }} />
+        <div style={{ display: "flex", alignItems: "center", marginTop: 6 }}>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+              width: 56, height: 56, borderRadius: "50%", background: "white",
+              border: `3px solid ${COLORS.gold}`, boxShadow: "0 4px 14px rgba(0,0,0,0.25)", overflow: "hidden",
+            }}>
+              <img src="logo.png" alt="瓦特鎮家族" style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.98, lineHeight: 1.3 }}>{TRIP.subtitle1}</div>
+              <div style={{ fontSize: 15, fontWeight: 500, marginTop: 2, opacity: 0.92, lineHeight: 1.3 }}>{TRIP.subtitle2}</div>
+            </div>
           </div>
-          <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.98, lineHeight: 1.3 }}>{TRIP.subtitle1}</div>
-            <div style={{ fontSize: 13, fontWeight: 500, marginTop: 1, opacity: 0.92, lineHeight: 1.3 }}>{TRIP.subtitle2}</div>
+          <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+            <div style={{ fontSize: 38, lineHeight: 1, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}>🛵</div>
           </div>
-          <div style={{ flexShrink: 0, fontSize: 38, lineHeight: 1, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}>🛵</div>
         </div>
       </div>
     </div>
@@ -849,18 +854,14 @@ function MapTab({ progress }) {
       </Card>
       {locations.map((loc, i) => {
         const navUrl = googleMapsNavUrl(loc);
-        const showName = loc.name || "待設定";
         return (
           <Card key={loc.type + i} style={{ padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <div style={{ fontSize: 22, lineHeight: 1.2 }}>{loc.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SectionTitle>{loc.type}</SectionTitle>
-                <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{showName}</div>
+                {loc.name ? <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{loc.name}</div> : null}
                 {loc.desc ? <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 4, lineHeight: 1.4 }}>{loc.desc}</div> : null}
-                {!loc.configured && loc.name ? (
-                  <div style={{ fontSize: 12, color: "#B0A480", marginTop: 6 }}>地圖 pin 待補座標（可在 config.trip2026.js 的 stops 加上 lat/lng）</div>
-                ) : null}
                 {navUrl ? (
                   <a href={navUrl} target="_blank" rel="noopener noreferrer" style={{
                     display: "inline-block", marginTop: 10, padding: "8px 14px", borderRadius: 999,
