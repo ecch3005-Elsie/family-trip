@@ -167,6 +167,29 @@ function resolveLocations(progress) {
   return LOCATIONS.map((loc) => resolveLocationEntry(loc, progress));
 }
 
+function mapStopDesc(stopId) {
+  const s = STOPS.find((x) => x.id === stopId);
+  if (!s) return "";
+  return "Day " + s.day + " · " + s.time + (s.note ? "（" + s.note + "）" : "");
+}
+
+const MAP_DESTINATIONS = [
+  { type: "集合地點", icon: "📍", label: "旗山早餐大會師", navName: "旗山早餐店 高雄旗山", desc: "Day 1 · " + TRIP.meeting.time + " 準時集合", lat: QISHAN_LAT, lng: QISHAN_LNG },
+  { type: "出發", icon: "🏍️", label: "台3線出發", navName: "台3線 高雄旗山", stopId: 0 },
+  { type: "餐廳", icon: "🍜", label: "伯恭甕缸雞", navName: "伯恭甕缸雞 雲林古坑", stopId: 1 },
+  { type: "景點", icon: "🌿", label: "古坑好農", navName: "古坑好農 雲林", stopId: 2 },
+  { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 3 },
+  { type: "景點", icon: "☕", label: "華山咖啡大街", navName: "華山咖啡大街 雲林古坑", stopId: 4 },
+  { type: "景點", icon: "🏛️", label: "華山會館", navName: "華山會館 雲林古坑", stopId: 5 },
+  { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 6 },
+  { type: "景點", icon: "🎋", label: "五元兩角", navName: "五元兩角 雲林", stopId: 7 },
+  { type: "景點", icon: "⛰️", label: "雲嶺之丘", navName: "雲嶺之丘 雲林古坑", stopId: 8 },
+  { type: "餐廳", icon: "🍜", label: "石壁在地料理", navName: "石壁在地料理 雲林", stopId: 9 },
+  { type: "路線", icon: "🛣️", label: "市道165號方向", desc: "Day 2 · 路線方向", noNav: true },
+  { type: "目的地", icon: "🏙️", label: "台南永康", navName: "台南市永康區", stopId: 11 },
+  { type: "餐廳", icon: "🍽️", label: "東悅坊港式飲茶", navName: "東悅坊港式飲茶 台南店", stopId: 12 },
+];
+
 function HandDrawnRouteMap() {
   return (
     <img
@@ -841,23 +864,23 @@ function TaskTab({ trip, progress, checkedCount, photos, myId, onToggle, onUploa
 }
 
 function MapTab({ progress }) {
-  const locations = resolveLocations(progress);
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner /><PageTitle>📍 旅行地圖</PageTitle>
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <HandDrawnRouteMap />
       </Card>
-      {locations.map((loc, i) => {
-        const navUrl = googleMapsNavUrl(loc);
+      {MAP_DESTINATIONS.map((loc, i) => {
+        const desc = loc.desc || (loc.stopId != null ? mapStopDesc(loc.stopId) : "");
+        const navUrl = loc.noNav ? null : googleMapsNavUrl({ lat: loc.lat, lng: loc.lng, name: loc.navName || loc.label });
         return (
-          <Card key={loc.type + i} style={{ padding: "14px 16px" }}>
+          <Card key={loc.label + i} style={{ padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <div style={{ fontSize: 22, lineHeight: 1.2 }}>{loc.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SectionTitle>{loc.type}</SectionTitle>
-                {loc.name ? <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{loc.name}</div> : null}
-                {loc.desc ? <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 4, lineHeight: 1.4 }}>{loc.desc}</div> : null}
+                <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{loc.label}</div>
+                {desc ? <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 4, lineHeight: 1.4 }}>{desc}</div> : null}
                 {navUrl ? (
                   <a href={navUrl} target="_blank" rel="noopener noreferrer" style={{
                     display: "inline-block", marginTop: 10, padding: "8px 14px", borderRadius: 999,
