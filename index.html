@@ -128,6 +128,16 @@ function googleMapsNavUrl(loc) {
   return null;
 }
 
+function photoDisplayUrl(url) {
+  if (!url) return "";
+  const raw = String(url);
+  if (raw.indexOf("drive.google.com/uc") >= 0) {
+    const idMatch = raw.match(/[?&]id=([\w-]+)/);
+    if (idMatch) return "https://drive.google.com/thumbnail?id=" + idMatch[1] + "&sz=w1000";
+  }
+  return url;
+}
+
 function resolveLocationEntry(loc, progress) {
   if (loc.dynamicNext) {
     const next = STOPS[(progress?.currentStop ?? -1) + 1];
@@ -778,7 +788,7 @@ function PhotoGallery({ photos, myId, onUploaded }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 10 }}>
           {photos.map((p) => (
             <div key={p.id} style={{ borderRadius: 12, overflow: "hidden", background: COLORS.cream }}>
-              <img src={p.url} alt="" style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }} />
+              <img src={photoDisplayUrl(p.url)} alt="" referrerPolicy="no-referrer" style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }} />
               <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#8A7A5C" }}>{p.personName}</div>
             </div>
           ))}
@@ -955,7 +965,7 @@ function ReviewTab({ people, trip, progress, segments, photos, day1Result, guess
         <Card>
           <SectionTitle>📸 合照精選</SectionTitle>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 8 }}>
-            {photos.slice(0, 6).map((p) => <img key={p.id} src={p.url} alt="" style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 10 }} />)}
+            {photos.slice(0, 6).map((p) => <img key={p.id} src={photoDisplayUrl(p.url)} alt="" referrerPolicy="no-referrer" style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 10 }} />)}
           </div>
         </Card>
       )}
