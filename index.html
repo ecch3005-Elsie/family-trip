@@ -12,17 +12,14 @@
 <meta name="apple-mobile-web-app-title" content="瓦特鎮家族" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <link rel="icon" href="icon-192.png" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   html, body { margin: 0; padding: 0; background: #F3E9D2; overscroll-behavior: none; }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  .leaflet-container { font-family: inherit; }
   input, button { font-family: inherit; }
 </style>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="config.template.js"></script>
 <script src="config.trip2026.js"></script>
 </head>
@@ -160,116 +157,14 @@ function resolveLocations(progress) {
   return LOCATIONS.map((loc) => resolveLocationEntry(loc, progress));
 }
 
-const MAP_ROUTE_EXCLUDE = /台南組解散|萬丹解散|高雄各組返家/;
-
-const TRIP_MAP_COORDS = {
-  0: [22.8724, 120.4297],
-  1: [23.6425, 120.5620],
-  2: [23.6478, 120.5744],
-  3: [23.5610, 120.4320],
-  4: [23.5590, 120.4310],
-  5: [23.5580, 120.4290],
-  6: [23.5610, 120.4320],
-  7: [23.7080, 120.4310],
-  8: [23.5890, 120.6010],
-  9: [23.6300, 120.6200],
-  10: [23.6650, 120.6450],
-  11: [23.0260, 120.2570],
-  12: [22.9917, 120.2139],
-};
-
-function getDayMapStops(day) {
-  let stops = STOPS.filter((s) => s.day === day && s.name && !MAP_ROUTE_EXCLUDE.test(s.name));
-  if (day === 1) {
-    const end = stops.findIndex((s) => s.name === "華山會館");
-    if (end >= 0) stops = stops.slice(0, end + 1);
-  }
-  if (day === 2) {
-    const end = stops.findIndex((s) => s.name === "東悅坊慶功宴");
-    if (end >= 0) stops = stops.slice(0, end + 1);
-  }
-  return stops;
-}
-
-function resolveStopCoords(stop) {
-  if (stop.lat != null && stop.lng != null) return [stop.lat, stop.lng];
-  const c = TRIP_MAP_COORDS[stop.id];
-  return c ? [c[0], c[1]] : null;
-}
-
-function mapStopLabel(stop) {
-  if (stop.name === "東悅坊慶功宴") return "東悅坊港式飲茶－台南店";
-  return stop.name;
-}
-
-function TripRouteMap() {
-  const mapElRef = useRef(null);
-  const mapObjRef = useRef(null);
-  useEffect(() => {
-    if (!mapElRef.current || typeof L === "undefined") return;
-    if (mapObjRef.current) {
-      mapObjRef.current.remove();
-      mapObjRef.current = null;
-    }
-    const dayRoutes = [
-      { day: 1, color: COLORS.plantGreen, stops: getDayMapStops(1) },
-      { day: 2, color: COLORS.orange, stops: getDayMapStops(2) },
-    ];
-    const allCoords = [];
-    dayRoutes.forEach((route) => {
-      route.stops.forEach((stop) => {
-        const c = resolveStopCoords(stop);
-        if (c) allCoords.push(c);
-      });
-    });
-    const center = allCoords.length ? allCoords[0] : [23.2, 120.35];
-    const map = L.map(mapElRef.current, { zoomControl: true, scrollWheelZoom: false }).setView(center, 9);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(map);
-    dayRoutes.forEach((route) => {
-      const line = route.stops.map(resolveStopCoords).filter(Boolean);
-      if (line.length > 1) {
-        L.polyline(line, {
-          color: route.color,
-          weight: 4,
-          opacity: 0.88,
-          dashArray: "10 7",
-          lineCap: "round",
-          lineJoin: "round",
-        }).addTo(map);
-      }
-      route.stops.forEach((stop) => {
-        const c = resolveStopCoords(stop);
-        if (!c) return;
-        const marker = L.circleMarker(c, {
-          radius: 7,
-          color: route.color,
-          weight: 2,
-          fillColor: COLORS.warmWhite,
-          fillOpacity: 1,
-        }).addTo(map);
-        marker.bindPopup(
-          "<strong>Day " + route.day + "</strong><br>" + mapStopLabel(stop) +
-          (stop.time ? "<br><span style='color:#8A7A5C'>" + stop.time + "</span>" : "")
-        );
-      });
-    });
-    if (allCoords.length > 1) {
-      map.fitBounds(L.latLngBounds(allCoords), { padding: [28, 28], maxZoom: 11 });
-    } else if (allCoords.length === 1) {
-      map.setView(allCoords[0], 12);
-    }
-    mapObjRef.current = map;
-    return () => {
-      if (mapObjRef.current) {
-        mapObjRef.current.remove();
-        mapObjRef.current = null;
-      }
-    };
-  }, []);
-  return <div ref={mapElRef} style={{ width: "100%", height: 300 }} />;
+function HandDrawnRouteMap() {
+  return (
+    <img
+      src="images/trip-route-map.png"
+      alt="2026 雲林二日機車小旅行路線圖"
+      style={{ width: "100%", height: "auto", display: "block", borderRadius: 20 }}
+    />
+  );
 }
 
 function formatDateTime(iso) {
@@ -941,7 +836,7 @@ function MapTab({ progress }) {
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner /><PageTitle>📍 旅行地圖</PageTitle>
       <Card style={{ padding: 0, overflow: "hidden" }}>
-        <TripRouteMap />
+        <HandDrawnRouteMap />
       </Card>
       {locations.map((loc, i) => {
         const navUrl = googleMapsNavUrl(loc);
