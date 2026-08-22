@@ -42,13 +42,14 @@
     max-width: 388px;
     padding: 14px 16px;
     border-radius: 14px;
-    background: #1F4A3D;
-    color: #fff;
+    background: linear-gradient(135deg, #F2C463, #E8B34A);
+    color: #4A3617;
     font-size: 16px;
     font-weight: 700;
     line-height: 1.5;
     word-break: break-word;
-    box-shadow: 0 8px 24px rgba(31,74,61,0.28);
+    box-shadow: 0 8px 24px rgba(228, 115, 44, 0.38);
+    border: 1px solid #E4732C;
   }
   .family-in-site-toast-in { animation: familyToastIn 0.35s ease forwards; }
   .family-in-site-toast-out { animation: familyToastOut 0.4s ease forwards; }
@@ -810,6 +811,7 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [msgHistoryOpen, setMsgHistoryOpen] = useState(false);
   const [annFormOpen, setAnnFormOpen] = useState(false);
   const [annText, setAnnText] = useState("");
   const [annSending, setAnnSending] = useState(false);
@@ -817,7 +819,12 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
   const pendingMessages = getPendingMessages(messages, messageAcks, me && me.sheetId);
   const pendingIds = {};
   pendingMessages.forEach(function (m) { pendingIds[m.messageId] = true; });
-  const messageHistory = getMessageHistory(messages, pendingIds, 15);
+  const allMessageHistory = getMessageHistory(messages, pendingIds, 50);
+  const displayMessageHistory = msgHistoryOpen ? allMessageHistory : allMessageHistory.slice(0, 2);
+  const msgHistoryLinkStyle = {
+    marginTop: 10, padding: "8px 0", width: "100%", border: "none", background: "none",
+    color: COLORS.plantGreen, fontWeight: 700, fontSize: 14, cursor: "pointer",
+  };
   const sortedAnnouncements = (announcements || []).slice().sort(function (a, b) {
     return (Number(b.ts) || 0) - (Number(a.ts) || 0);
   });
@@ -996,35 +1003,6 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
           </div>
         ) : null}
 
-        {messageHistory.length > 0 ? (
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#8A7A5C", marginBottom: 8 }}>訊息紀錄</div>
-            <div style={{
-              maxHeight: 220, overflowY: "auto", WebkitOverflowScrolling: "touch",
-              padding: "4px 0",
-            }}>
-              {messageHistory.map(function (m) {
-                const isMine = me && m.senderId === me.sheetId;
-                return (
-                  <div key={m.messageId} style={{
-                    marginBottom: 8, padding: "10px 12px", borderRadius: 12,
-                    background: isMine ? "#E8F3EA" : COLORS.cream,
-                    border: isMine ? "1px solid #C8E6CF" : "1px solid #F0EAD8",
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: isMine ? COLORS.deepGreen : COLORS.ink }}>
-                        {m.senderName}{isMine ? "（我）" : ""}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#B0A480", flexShrink: 0 }}>{formatMessageTime(m.createdAt)}</div>
-                    </div>
-                    <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.message}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-
         <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid #F0EAD8" }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.deepGreen, marginBottom: 10 }}>📣 家族公告</div>
           {latestAnnouncement ? (
@@ -1045,10 +1023,7 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
             <button
               type="button"
               onClick={function () { setHistoryOpen(!historyOpen); }}
-              style={{
-                marginTop: 10, padding: "8px 0", width: "100%", border: "none", background: "none",
-                color: COLORS.plantGreen, fontWeight: 700, fontSize: 14, cursor: "pointer",
-              }}
+              style={msgHistoryLinkStyle}
             >{historyOpen ? "收合歷史公告" : "查看歷史公告"}</button>
           ) : null}
           {historyOpen ? (
@@ -1116,6 +1091,35 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
             </div>
           )}
         </div>
+
+        {allMessageHistory.length > 0 ? (
+          <div style={{ marginTop: 16 }}>
+            <div style={msgHistoryOpen ? { maxHeight: 240, overflowY: "auto", WebkitOverflowScrolling: "touch" } : null}>
+              {displayMessageHistory.map(function (m) {
+                const isMine = me && m.senderId === me.sheetId;
+                return (
+                  <div key={m.messageId} style={{
+                    padding: "6px 0", borderBottom: "1px solid #F0EAD8",
+                    fontSize: 13, lineHeight: 1.45, color: "#8A7A5C",
+                  }}>
+                    <span style={{ fontWeight: 700, color: isMine ? COLORS.deepGreen : "#8A7A5C" }}>
+                      {m.senderName}{isMine ? "（我）" : ""}：
+                    </span>
+                    <span style={{ color: COLORS.ink }}>{m.message}</span>
+                    <span style={{ fontSize: 11, color: "#B0A480", marginLeft: 6 }}>{formatMessageTime(m.createdAt)}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {allMessageHistory.length > 2 ? (
+              <button
+                type="button"
+                onClick={function () { setMsgHistoryOpen(!msgHistoryOpen); }}
+                style={msgHistoryLinkStyle}
+              >{msgHistoryOpen ? "收合訊息紀錄" : "查看訊息紀錄"}</button>
+            ) : null}
+          </div>
+        ) : null}
 
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #F0EAD8" }}>
           <PushNotificationBlock myId={myId} embedded settingsMode pushStats={pushStats} />
