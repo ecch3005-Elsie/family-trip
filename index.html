@@ -109,6 +109,30 @@ async function fetchSheetData() {
 
 function isTruthy(v) { return v === true || v === "TRUE" || v === "true" || v === 1; }
 
+const IDENTITY_STORAGE_KEY = "family-trip-who";
+
+function isValidSheetId(sheetId) {
+  return !!sheetId && FAMILY.some(function (p) { return p.sheetId === sheetId; });
+}
+
+function persistIdentity(sheetId) {
+  if (!isValidSheetId(sheetId)) return;
+  try { localStorage.setItem(IDENTITY_STORAGE_KEY, sheetId); } catch (e) {}
+}
+
+function readPersistedIdentity() {
+  try {
+    const sheetId = localStorage.getItem(IDENTITY_STORAGE_KEY);
+    if (isValidSheetId(sheetId)) return sheetId;
+  } catch (e) {}
+  return null;
+}
+
+function familyIdFromSheetId(sheetId) {
+  const m = FAMILY.find(function (p) { return p.sheetId === sheetId; });
+  return m ? m.id : null;
+}
+
 function weatherInfo(code) { return WEATHER_CODE_MAP[code] || { icon: "🌤️", label: "" }; }
 
 async function fetchWeather() {
@@ -1713,7 +1737,17 @@ function App() {
     const who = params.get("who");
     const tabParam = params.get("tab");
     const focusParam = params.get("focus");
-    if (who) { const m = FAMILY.find((p) => p.sheetId === who); if (m) setMyId(m.id); }
+    let sheetId = null;
+    if (who && isValidSheetId(who)) {
+      sheetId = who;
+      persistIdentity(who);
+    } else {
+      sheetId = readPersistedIdentity();
+    }
+    if (sheetId) {
+      const familyId = familyIdFromSheetId(sheetId);
+      if (familyId !== null) setMyId(familyId);
+    }
     if (tabParam === "messages") {
       setTab("journey");
       setFocusFamilySay(true);
@@ -1773,7 +1807,7 @@ function App() {
   const shellStyle = { maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream, fontFamily: '"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', position: "relative" };
 
   if (identityLoading) return <div style={shellStyle}><HeroBanner /><div style={{ textAlign: "center", marginTop: 40, color: "#8A7A5C" }}>載入中…</div></div>;
-  if (myId === null) return <div style={shellStyle}><IdentityPicker onPick={(id) => { setMyId(id); const p = FAMILY.find((x) => x.id === id); if (p) { const u = new URL(window.location.href); u.searchParams.set("who", p.sheetId); window.history.replaceState({}, "", u); } }} /></div>;
+  if (myId === null) return <div style={shellStyle}><IdentityPicker onPick={(id) => { setMyId(id); const p = FAMILY.find((x) => x.id === id); if (p) { persistIdentity(p.sheetId); const u = new URL(window.location.href); u.searchParams.set("who", p.sheetId); window.history.replaceState({}, "", u); } }} /></div>;
 
   const ctx = { checkedCount, arrivedHomeCount: people.filter((p) => p.arrivedHome).length, trip, progress, day1Result, mySheetId: me?.sheetId || "" };
 
