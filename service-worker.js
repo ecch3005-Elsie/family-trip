@@ -22,7 +22,20 @@ self.addEventListener("push", function (event) {
     badge: "./icon-192.png",
     data: { url: data.url || "./index.html?tab=journey&focus=family-say" },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (clientList) {
+        clientList.forEach(function (client) {
+          client.postMessage({
+            type: "family-push",
+            title: title,
+            body: data.body || "",
+          });
+        });
+      }),
+    ])
+  );
 });
 
 self.addEventListener("notificationclick", function (event) {

@@ -60,6 +60,8 @@ async function fetchSheetData() {
     day1Result: data.day1Result || null,
     guessLocked: !!data.guessLocked,
     messages: Array.isArray(data.messages) ? data.messages : [],
+    messageAcks: Array.isArray(data.messageAcks) ? data.messageAcks : [],
+    pushStats: data.pushStats || { activeSubscriptionCount: 0 },
   };
 }
 
@@ -737,41 +739,36 @@ function SafetyCard() {
   );
 }
 
-function buildFamilySayFeed(announcements, messages) {
-  const annItems = (announcements || []).map(function (a) {
-    return {
-      id: "ann-" + a.id,
-      kind: "announcement",
-      senderName: "家族公告",
-      message: a.text,
-      level: a.level || "normal",
-      createdAt: a.ts ? new Date(Number(a.ts)).toISOString() : "",
-    };
+function getPendingMessages(messages, messageAcks, mySheetId) {
+  if (!mySheetId) return [];
+  const ackSet = {};
+  (messageAcks || []).forEach(function (a) {
+    if (a.personId === mySheetId) ackSet[a.messageId] = true;
   });
-  const msgItems = (messages || []).map(function (m) {
-    return {
-      id: "msg-" + m.messageId,
-      kind: "message",
-      senderId: m.senderId,
-      senderName: m.senderName,
-      message: m.message,
-      priority: m.priority || "normal",
-      createdAt: m.createdAt || "",
-    };
-  });
-  return annItems.concat(msgItems).sort(function (a, b) {
-    return (new Date(b.createdAt).getTime() || 0) - (new Date(a.createdAt).getTime() || 0);
-  });
+  return (messages || [])
+    .filter(function (m) { return m.senderId !== mySheetId && !ackSet[m.messageId]; })
+    .sort(function (a, b) {
+      return (new Date(b.createdAt).getTime() || 0) - (new Date(a.createdAt).getTime() || 0);
+    });
 }
 
-function FamilySaySection({ announcements, messages, myId, onSent, focusOnMount }) {
+function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, focusOnMount, pushStats }) {
   const me = FAMILY.find(function (p) { return p.id === myId; });
   const sectionRef = useRef(null);
-  const listEndRef = useRef(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const feed = buildFamilySayFeed(announcements, messages);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [annFormOpen, setAnnFormOpen] = useState(false);
+  const [annText, setAnnText] = useState("");
+  const [annSending, setAnnSending] = useState(false);
+
+  const pendingMessages = getPendingMessages(messages, messageAcks, me && me.sheetId);
+  const sortedAnnouncements = (announcements || []).slice().sort(function (a, b) {
+    return (Number(b.ts) || 0) - (Number(a.ts) || 0);
+  });
+  const latestAnnouncement = sortedAnnouncements[0] || null;
+  const historyAnnouncements = sortedAnnouncements.slice(1);
 
   useEffect(function () {
     if (focusOnMount && sectionRef.current) {
@@ -779,23 +776,22 @@ function FamilySaySection({ announcements, messages, myId, onSent, focusOnMount 
     }
   }, [focusOnMount]);
 
-  useEffect(function () {
-    if (listEndRef.current) listEndRef.current.scrollIntoView({ behavior: "smooth" });
-  }, [feed.length]);
-
   const sendMessage = async function (messageText) {
     if (!me || sending) return;
     const message = String(messageText || "").trim();
     if (!message) return;
     setSending(true);
     try {
-      await postToSheet({
+      const result = await postToSheet({
         action: "sendMessage",
         senderId: me.sheetId,
         senderName: me.name,
         message: message,
         priority: "normal",
       });
+      if (result.push && result.push.skipped) {
+        console.warn("Push 未送出:", result.push.reason, result.push);
+      }
       setText("");
       setCustomOpen(false);
       if (onSent) onSent();
@@ -806,49 +802,90 @@ function FamilySaySection({ announcements, messages, myId, onSent, focusOnMount 
     setSending(false);
   };
 
+  const ackMessage = async function (messageId) {
+    if (!me || sending) return;
+    setSending(true);
+    try {
+      await postToSheet({
+        action: "acknowledgeMessage",
+        personId: me.sheetId,
+        messageId: messageId,
+      });
+      if (onSent) onSent();
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      alert("更新失敗：" + msg);
+    }
+    setSending(false);
+  };
+
+  const postAnnouncement = async function () {
+    if (!me || annSending) return;
+    const body = String(annText || "").trim();
+    if (!body) return;
+    setAnnSending(true);
+    try {
+      const result = await postToSheet({
+        action: "postAnnouncement",
+        text: body,
+        level: "normal",
+      });
+      if (result.push && result.push.skipped) {
+        console.warn("公告 Push 未送出:", result.push.reason, result.push);
+      }
+      setAnnText("");
+      setAnnFormOpen(false);
+      if (onSent) onSent();
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      alert("公告送出失敗：" + msg);
+    }
+    setAnnSending(false);
+  };
+
   return (
     <Card>
       <div ref={sectionRef} id="family-say" style={{ scrollMarginTop: 12 }}>
-        <SectionTitle style={{ marginBottom: 10 }}>💬 家人想說</SectionTitle>
-        <PushNotificationBlock myId={myId} embedded />
-        <div style={{
-          marginTop: 12, padding: "12px 14px", maxHeight: 320, overflowY: "auto",
-          WebkitOverflowScrolling: "touch", background: COLORS.cream, borderRadius: 14,
-        }}>
-          {feed.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "20px 8px", color: "#9A8E6E", fontSize: 15 }}>
-              還沒有訊息，選一個按鈕跟家人說一聲吧！
-            </div>
-          ) : feed.map(function (item) {
-            const isMine = item.kind === "message" && me && item.senderId === me.sheetId;
-            const isAnn = item.kind === "announcement";
-            const annLevel = isAnn ? (ANNOUNCEMENT_LEVELS[item.level] || ANNOUNCEMENT_LEVELS.normal) : null;
-            const isImportant = !isAnn && item.priority === "important";
-            const msgLevel = isImportant ? ANNOUNCEMENT_LEVELS.important : ANNOUNCEMENT_LEVELS.normal;
-            return (
-              <div key={item.id} style={{
-                marginBottom: 10, padding: "10px 12px", borderRadius: 14,
-                background: isAnn ? annLevel.bg : (isImportant ? msgLevel.bg : (isMine ? "#E8F3EA" : COLORS.warmWhite)),
-                border: isAnn ? "1px solid #E8D5A0" : (isImportant ? "1px solid #E8D5A0" : "1px solid #F0EAD8"),
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: isMine ? COLORS.deepGreen : COLORS.ink }}>
-                    {item.senderName}{isMine ? "（我）" : ""}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#B0A480", flexShrink: 0 }}>{formatMessageTime(item.createdAt)}</div>
-                </div>
-                {isAnn ? (
-                  <div style={{ fontSize: 11, fontWeight: 800, color: annLevel.color, marginTop: 4 }}>📢 {annLevel.label}公告</div>
-                ) : isImportant ? (
-                  <div style={{ fontSize: 11, fontWeight: 800, color: msgLevel.color, marginTop: 4 }}>👑 重要</div>
-                ) : null}
-                <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 6, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{item.message}</div>
-              </div>
-            );
-          })}
-          <div ref={listEndRef} />
+        <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.deepGreen, marginBottom: 14, lineHeight: 1.3 }}>
+          💬 家人想說
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 14 }}>
+
+        {pendingMessages.length > 0 ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#8A7A5C", marginBottom: 8 }}>目前需要注意的訊息</div>
+            {pendingMessages.map(function (m) {
+              return (
+                <div key={m.messageId} style={{
+                  marginBottom: 10, padding: "12px 14px", borderRadius: 14,
+                  background: COLORS.warmWhite, border: "1px solid #F0EAD8",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.ink }}>{m.senderName}</div>
+                    <div style={{ fontSize: 11, color: "#B0A480", flexShrink: 0 }}>{formatMessageTime(m.createdAt)}</div>
+                  </div>
+                  <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 8, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.message}</div>
+                  <button
+                    type="button"
+                    disabled={sending}
+                    onClick={function () { ackMessage(m.messageId); }}
+                    style={{
+                      marginTop: 10, width: "100%", padding: "10px 0", borderRadius: 12, border: "none",
+                      background: COLORS.plantGreen, color: "white", fontWeight: 800, fontSize: 15,
+                      cursor: sending ? "not-allowed" : "pointer", opacity: sending ? 0.6 : 1,
+                    }}
+                  >知道了</button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ fontSize: 15, color: "#9A8E6E", marginBottom: 16, lineHeight: 1.5 }}>
+            目前沒有需要回應的訊息，可以直接跟家人說一句！
+          </div>
+        )}
+
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#8A7A5C", marginBottom: 8 }}>快速說一句</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
           {FEEDBACK_TYPES.map(function (o) {
             return (
               <button
@@ -877,7 +914,7 @@ function FamilySaySection({ announcements, messages, myId, onSent, focusOnMount 
               cursor: sending ? "not-allowed" : "pointer",
               opacity: sending ? 0.6 : 1,
             }}
-          >✏️ 自行輸入</button>
+          >✏️ 想打字</button>
         </div>
         {customOpen ? (
           <div style={{ marginTop: 10 }}>
@@ -904,6 +941,102 @@ function FamilySaySection({ announcements, messages, myId, onSent, focusOnMount 
             >{sending ? "送出中…" : "📤 傳送給全體家人"}</button>
           </div>
         ) : null}
+
+        <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid #F0EAD8" }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.deepGreen, marginBottom: 10 }}>📣 家族公告</div>
+          {latestAnnouncement ? (
+            <div style={{
+              padding: "12px 14px", borderRadius: 14, background: "#FDF6E3", border: "1px solid #E8D5A0",
+            }}>
+              <div style={{ fontSize: 16, color: COLORS.ink, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {latestAnnouncement.text}
+              </div>
+              <div style={{ fontSize: 11, color: "#B0A480", marginTop: 8 }}>
+                {latestAnnouncement.ts ? formatMessageTime(new Date(Number(latestAnnouncement.ts)).toISOString()) : ""}
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 15, color: "#9A8E6E", marginBottom: 8 }}>尚無公告</div>
+          )}
+          {historyAnnouncements.length > 0 ? (
+            <button
+              type="button"
+              onClick={function () { setHistoryOpen(!historyOpen); }}
+              style={{
+                marginTop: 10, padding: "8px 0", width: "100%", border: "none", background: "none",
+                color: COLORS.plantGreen, fontWeight: 700, fontSize: 14, cursor: "pointer",
+              }}
+            >{historyOpen ? "收合歷史公告" : "查看歷史公告"}</button>
+          ) : null}
+          {historyOpen ? (
+            <div style={{ marginTop: 8, maxHeight: 240, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+              {historyAnnouncements.map(function (a) {
+                return (
+                  <div key={a.id} style={{
+                    marginBottom: 8, padding: "10px 12px", borderRadius: 12,
+                    background: COLORS.cream, border: "1px solid #F0EAD8",
+                  }}>
+                    <div style={{ fontSize: 15, color: COLORS.ink, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{a.text}</div>
+                    <div style={{ fontSize: 11, color: "#B0A480", marginTop: 6 }}>
+                      {a.ts ? formatMessageTime(new Date(Number(a.ts)).toISOString()) : ""}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+          {!annFormOpen ? (
+            <button
+              type="button"
+              disabled={annSending}
+              onClick={function () { setAnnFormOpen(true); }}
+              style={{
+                marginTop: 12, width: "100%", padding: "10px 0", borderRadius: 12,
+                border: "1px solid #DCD3B8", background: "white", color: COLORS.ink,
+                fontWeight: 700, fontSize: 15, cursor: annSending ? "not-allowed" : "pointer",
+              }}
+            >📣 發布新公告</button>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              <textarea
+                value={annText}
+                onChange={function (e) { setAnnText(e.target.value); }}
+                placeholder="輸入要通知全家的公告…"
+                rows={3}
+                style={{
+                  width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #DCD3B8",
+                  fontSize: 16, lineHeight: 1.5, resize: "vertical", minHeight: 72,
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button
+                  type="button"
+                  disabled={annSending}
+                  onClick={function () { setAnnFormOpen(false); setAnnText(""); }}
+                  style={{
+                    flex: 1, padding: "10px 0", borderRadius: 12, border: "1px solid #DCD3B8",
+                    background: "white", color: "#8A7A5C", fontWeight: 700, fontSize: 15,
+                  }}
+                >取消</button>
+                <button
+                  type="button"
+                  disabled={annSending || !annText.trim()}
+                  onClick={postAnnouncement}
+                  style={{
+                    flex: 2, padding: "10px 0", borderRadius: 12, border: "none",
+                    background: COLORS.gold, color: "#4A3617", fontWeight: 800, fontSize: 15,
+                    cursor: annSending || !annText.trim() ? "not-allowed" : "pointer",
+                    opacity: annSending || !annText.trim() ? 0.6 : 1,
+                  }}
+                >{annSending ? "送出中…" : "📣 發送公告"}</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #F0EAD8" }}>
+          <PushNotificationBlock myId={myId} embedded settingsMode pushStats={pushStats} />
+        </div>
       </div>
     </Card>
   );
@@ -1111,7 +1244,7 @@ async function registerPushSubscription(personId, subscription) {
   });
 }
 
-function PushNotificationBlock({ myId, embedded }) {
+function PushNotificationBlock({ myId, embedded, settingsMode, pushStats }) {
   const me = FAMILY.find((p) => p.id === myId);
   const [status, setStatus] = useState("checking");
   const [busy, setBusy] = useState(false);
@@ -1216,10 +1349,17 @@ function PushNotificationBlock({ myId, embedded }) {
   const showEnable = (status === "idle" || status === "closed") && status !== "no-vapid" && status !== "ios-hint" && status !== "unsupported";
   const showDisable = status === "subscribed";
 
+  const hintLine = settingsMode && typeof pushStats !== "undefined" && pushStats.activeSubscriptionCount <= 1 && status === "subscribed"
+    ? "目前全家僅 " + pushStats.activeSubscriptionCount + " 台裝置已註冊通知，其他家人也需在此開啟才收得到 Push。"
+    : null;
+
   const inner = (
     <>
-      <SectionTitle style={{ marginBottom: 6 }}>🔔 手機通知</SectionTitle>
-      <div style={{ fontSize: 14, color: "#8A7A5C", marginBottom: 10 }}>{statusText[status] || statusText.idle}</div>
+      <SectionTitle style={{ marginBottom: 6, fontSize: settingsMode ? 15 : undefined, fontWeight: settingsMode ? 700 : undefined }}>🔔 手機通知</SectionTitle>
+      <div style={{ fontSize: settingsMode ? 13 : 14, color: "#8A7A5C", marginBottom: 10 }}>{statusText[status] || statusText.idle}</div>
+      {hintLine ? (
+        <div style={{ fontSize: 12, color: "#B8860B", marginBottom: 10, lineHeight: 1.45 }}>{hintLine}</div>
+      ) : null}
       {showEnable ? (
         <button type="button" disabled={busy} onClick={handleEnable} style={{
           width: "100%", padding: "10px 0", borderRadius: 12, border: "none",
@@ -1239,7 +1379,7 @@ function PushNotificationBlock({ myId, embedded }) {
 
   if (embedded) {
     return (
-      <div style={{ paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid #F0EAD8" }}>{inner}</div>
+      <div style={settingsMode ? { opacity: 0.95 } : { paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid #F0EAD8" }}>{inner}</div>
     );
   }
 
@@ -1337,6 +1477,20 @@ function ReviewTab({ people, trip, progress, segments, photos, day1Result, guess
   );
 }
 
+function InSiteToast({ toast }) {
+  if (!toast) return null;
+  return (
+    <div style={{
+      position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 9999,
+      width: "calc(100% - 32px)", maxWidth: 388, padding: "12px 16px", borderRadius: 14,
+      background: COLORS.deepGreen, color: "white", fontSize: 15, fontWeight: 700,
+      boxShadow: "0 8px 24px rgba(31,74,61,0.28)", lineHeight: 1.45,
+    }}>
+      🔔 {toast.senderName}：{toast.message}
+    </div>
+  );
+}
+
 function JourneyHome(props) {
   const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, focusFamilySay, ...rest } = props;
   const next = STOPS[rest.progress.currentStop + 1];
@@ -1349,9 +1503,11 @@ function JourneyHome(props) {
       <FamilySaySection
         announcements={rest.trip.announcements}
         messages={rest.messages}
+        messageAcks={rest.messageAcks}
         myId={rest.myId}
         onSent={rest.onSent}
         focusOnMount={focusFamilySay}
+        pushStats={rest.pushStats}
       />
       <WeatherCard /><SafetyCard />
       <div style={{ margin: "16px 16px 0", padding: "14px 16px", borderRadius: 16, background: `linear-gradient(135deg, ${COLORS.gold}, #F2C463)`, display: "flex", alignItems: "center", gap: 10 }}>
@@ -1392,12 +1548,17 @@ function App() {
   const [segments, setSegments] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [messageAcks, setMessageAcks] = useState([]);
+  const [inSiteToast, setInSiteToast] = useState(null);
+  const [pushStats, setPushStats] = useState({ activeSubscriptionCount: 0 });
   const [day1Result, setDay1Result] = useState(null);
   const [guessLocked, setGuessLocked] = useState(false);
   const [syncState, setSyncState] = useState("loading");
   const [pendingAdvance, setPendingAdvance] = useState(false);
   const [focusFamilySay, setFocusFamilySay] = useState(false);
   const pollRef = useRef(null);
+  const prevMsgIdsRef = useRef(null);
+  const toastTimerRef = useRef(null);
 
   const applyMembers = (members) => {
     setPeople((prev) => prev.map((p) => {
@@ -1417,10 +1578,27 @@ function App() {
       setSegments(data.segments);
       setPhotos(data.photos);
       setMessages(data.messages);
+      setMessageAcks(data.messageAcks);
+      setPushStats(data.pushStats || { activeSubscriptionCount: 0 });
       setDay1Result(data.day1Result);
       setGuessLocked(data.guessLocked);
       setTrip({ ...DEFAULT_TRIP, tasks: data.tasks, announcements: data.announcements });
       setLoaded(true);
+      const myPerson = FAMILY.find(function (p) { return p.id === myId; });
+      const mySheetId = myPerson && myPerson.sheetId;
+      if (mySheetId && prevMsgIdsRef.current) {
+        const prevIds = prevMsgIdsRef.current;
+        const fresh = (data.messages || []).filter(function (m) {
+          return !prevIds.has(m.messageId) && m.senderId !== mySheetId;
+        });
+        if (fresh.length && document.visibilityState === "visible") {
+          const latest = fresh[fresh.length - 1];
+          setInSiteToast({ senderName: latest.senderName, message: latest.message });
+          if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+          toastTimerRef.current = setTimeout(function () { setInSiteToast(null); }, 5000);
+        }
+      }
+      prevMsgIdsRef.current = new Set((data.messages || []).map(function (m) { return m.messageId; }));
     } catch (e) { ok = false; }
     setSyncState(ok ? "ok" : "error");
   };
@@ -1451,6 +1629,18 @@ function App() {
   useEffect(() => {
     if (location.protocol !== "https:" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("./service-worker.js").catch(function () {});
+    const onSwMessage = function (event) {
+      if (!event.data || event.data.type !== "family-push") return;
+      const body = String(event.data.body || "");
+      const colon = body.indexOf("：");
+      const senderName = colon >= 0 ? body.slice(0, colon) : "家人";
+      const message = colon >= 0 ? body.slice(colon + 1) : body;
+      setInSiteToast({ senderName: senderName, message: message });
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(function () { setInSiteToast(null); }, 5000);
+    };
+    navigator.serviceWorker.addEventListener("message", onSwMessage);
+    return function () { navigator.serviceWorker.removeEventListener("message", onSwMessage); };
   }, []);
 
   const me = FAMILY.find((p) => p.id === myId);
@@ -1476,12 +1666,13 @@ function App() {
 
   return (
     <div style={shellStyle}>
+      <InSiteToast toast={inSiteToast} />
       {tab === "checkin" && <CheckinTab people={people} myId={myId} loaded={loaded} syncState={syncState} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} onSaved={fetchAll}
         onCheckIn={async () => { await postToSheet({ action: "checkin", id: me.sheetId }); fetchAll(); }}
         onCheckInHome={async () => { await postToSheet({ action: "checkinHome", id: me.sheetId }); fetchAll(); }}
         onResetCheckin={async () => { await postToSheet({ action: "resetAll" }); fetchAll(); }}
         onResetCheckinHome={async () => { await postToSheet({ action: "resetAllHome" }); fetchAll(); }} />}
-      {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} trip={trip} messages={messages} myId={myId}
+      {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} trip={trip} messages={messages} messageAcks={messageAcks} pushStats={pushStats} myId={myId}
         pendingAdvance={pendingAdvance} setPendingAdvance={setPendingAdvance} handleConfirmAdvance={handleConfirmAdvance}
         focusFamilySay={focusFamilySay} onSent={fetchAll} />}
       {tab === "map" && <MapTab progress={progress} />}
