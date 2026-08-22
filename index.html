@@ -59,6 +59,7 @@ async function fetchSheetData() {
     announcements: Array.isArray(data.announcements) ? data.announcements : [],
     day1Result: data.day1Result || null,
     guessLocked: !!data.guessLocked,
+    messages: Array.isArray(data.messages) ? data.messages : [],
   };
 }
 
@@ -736,66 +737,175 @@ function SafetyCard() {
   );
 }
 
-function AnnouncementSection({ announcements, onPost }) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [level, setLevel] = useState("normal");
-  const latest = announcements[0];
-  return (
-    <Card>
-      <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", cursor: "pointer", padding: 0 }}>
-        <SectionTitle>📢 家族公告</SectionTitle>
-        <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
-      </button>
-      {latest ? (
-        <div style={{ marginTop: 10, background: ANNOUNCEMENT_LEVELS[latest.level].bg, borderRadius: 12, padding: "10px 12px" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: ANNOUNCEMENT_LEVELS[latest.level].color }}>{ANNOUNCEMENT_LEVELS[latest.level].label}</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink, marginTop: 2 }}>{latest.text}</div>
-        </div>
-      ) : <div style={{ marginTop: 10, fontSize: 15, color: "#9A8E6E" }}>目前沒有公告</div>}
-      {open && (
-        <div style={{ marginTop: 14 }}>
-          <SectionTitle style={{ marginBottom: 6 }}>✏️ 發布新公告</SectionTitle>
-          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="輸入公告內容"
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #DCD3B8", fontSize: 16 }} />
-          <button onClick={() => { if (text.trim()) { onPost(text.trim(), level); setText(""); } }}
-            style={{ width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 10, border: "none", background: COLORS.deepGreen, color: "white", fontWeight: 700, cursor: "pointer" }}>發布公告</button>
-        </div>
-      )}
-    </Card>
-  );
+function buildFamilySayFeed(announcements, messages) {
+  const annItems = (announcements || []).map(function (a) {
+    return {
+      id: "ann-" + a.id,
+      kind: "announcement",
+      senderName: "家族公告",
+      message: a.text,
+      level: a.level || "normal",
+      createdAt: a.ts ? new Date(Number(a.ts)).toISOString() : "",
+    };
+  });
+  const msgItems = (messages || []).map(function (m) {
+    return {
+      id: "msg-" + m.messageId,
+      kind: "message",
+      senderId: m.senderId,
+      senderName: m.senderName,
+      message: m.message,
+      priority: m.priority || "normal",
+      createdAt: m.createdAt || "",
+    };
+  });
+  return annItems.concat(msgItems).sort(function (a, b) {
+    return (new Date(b.createdAt).getTime() || 0) - (new Date(a.createdAt).getTime() || 0);
+  });
 }
 
-function FeedbackSection({ feedback, onRequest, onAcknowledge }) {
-  const [open, setOpen] = useState(false);
+function FamilySaySection({ announcements, messages, myId, onSent, focusOnMount }) {
+  const me = FAMILY.find(function (p) { return p.id === myId; });
+  const sectionRef = useRef(null);
+  const listEndRef = useRef(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const feed = buildFamilySayFeed(announcements, messages);
+
+  useEffect(function () {
+    if (focusOnMount && sectionRef.current) {
+      sectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [focusOnMount]);
+
+  useEffect(function () {
+    if (listEndRef.current) listEndRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [feed.length]);
+
+  const sendMessage = async function (messageText) {
+    if (!me || sending) return;
+    const message = String(messageText || "").trim();
+    if (!message) return;
+    setSending(true);
+    try {
+      await postToSheet({
+        action: "sendMessage",
+        senderId: me.sheetId,
+        senderName: me.name,
+        message: message,
+        priority: "normal",
+      });
+      setText("");
+      setCustomOpen(false);
+      if (onSent) onSent();
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      alert("訊息送出失敗：" + msg);
+    }
+    setSending(false);
+  };
+
   return (
-    <>
-      {feedback.length > 0 && (
-        <Card style={{ background: "#FBF0D6" }}>
-          <SectionTitle style={{ color: "#B8861F", fontWeight: 800 }}>💬 家人想說一下</SectionTitle>
-          {feedback.map((f) => (
-            <div key={f.id} style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink }}>{f.personName}：{FEEDBACK_TYPES.find((o) => o.key === f.type)?.icon} {FEEDBACK_TYPES.find((o) => o.key === f.type)?.label}</div>
-              <button onClick={() => onAcknowledge(f.id)} style={{ background: "none", border: "1px solid #B8861F", color: "#B8861F", borderRadius: 999, padding: "4px 10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>知道了</button>
+    <Card>
+      <div ref={sectionRef} id="family-say" style={{ scrollMarginTop: 12 }}>
+        <SectionTitle style={{ marginBottom: 10 }}>💬 家人想說</SectionTitle>
+        <PushNotificationBlock myId={myId} embedded />
+        <div style={{
+          marginTop: 12, padding: "12px 14px", maxHeight: 320, overflowY: "auto",
+          WebkitOverflowScrolling: "touch", background: COLORS.cream, borderRadius: 14,
+        }}>
+          {feed.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 8px", color: "#9A8E6E", fontSize: 15 }}>
+              還沒有訊息，選一個按鈕跟家人說一聲吧！
             </div>
-          ))}
-        </Card>
-      )}
-      <Card>
-        <button onClick={() => setOpen(!open)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", cursor: "pointer", padding: 0 }}>
-          <SectionTitle>💬 跟家人說一下</SectionTitle>
-          <div style={{ fontSize: 14, color: COLORS.plantGreen, fontWeight: 700 }}>{open ? "收合" : "展開"}</div>
-        </button>
-        {open && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 12 }}>
-            {FEEDBACK_TYPES.map((o) => (
-              <button key={o.key} onClick={() => { onRequest(o.key); setOpen(false); }}
-                style={{ padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontSize: 15, fontWeight: 700, color: COLORS.ink, cursor: "pointer" }}>{o.icon} {o.label}</button>
-            ))}
+          ) : feed.map(function (item) {
+            const isMine = item.kind === "message" && me && item.senderId === me.sheetId;
+            const isAnn = item.kind === "announcement";
+            const annLevel = isAnn ? (ANNOUNCEMENT_LEVELS[item.level] || ANNOUNCEMENT_LEVELS.normal) : null;
+            const isImportant = !isAnn && item.priority === "important";
+            const msgLevel = isImportant ? ANNOUNCEMENT_LEVELS.important : ANNOUNCEMENT_LEVELS.normal;
+            return (
+              <div key={item.id} style={{
+                marginBottom: 10, padding: "10px 12px", borderRadius: 14,
+                background: isAnn ? annLevel.bg : (isImportant ? msgLevel.bg : (isMine ? "#E8F3EA" : COLORS.warmWhite)),
+                border: isAnn ? "1px solid #E8D5A0" : (isImportant ? "1px solid #E8D5A0" : "1px solid #F0EAD8"),
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: isMine ? COLORS.deepGreen : COLORS.ink }}>
+                    {item.senderName}{isMine ? "（我）" : ""}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#B0A480", flexShrink: 0 }}>{formatMessageTime(item.createdAt)}</div>
+                </div>
+                {isAnn ? (
+                  <div style={{ fontSize: 11, fontWeight: 800, color: annLevel.color, marginTop: 4 }}>📢 {annLevel.label}公告</div>
+                ) : isImportant ? (
+                  <div style={{ fontSize: 11, fontWeight: 800, color: msgLevel.color, marginTop: 4 }}>👑 重要</div>
+                ) : null}
+                <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 6, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{item.message}</div>
+              </div>
+            );
+          })}
+          <div ref={listEndRef} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 14 }}>
+          {FEEDBACK_TYPES.map(function (o) {
+            return (
+              <button
+                key={o.key}
+                type="button"
+                disabled={sending}
+                onClick={function () { sendMessage(o.icon + " " + o.label); }}
+                style={{
+                  padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white",
+                  fontSize: 15, fontWeight: 700, color: COLORS.ink, cursor: sending ? "not-allowed" : "pointer",
+                  opacity: sending ? 0.6 : 1,
+                }}
+              >{o.icon} {o.label}</button>
+            );
+          })}
+          <button
+            type="button"
+            disabled={sending}
+            onClick={function () { setCustomOpen(!customOpen); }}
+            style={{
+              padding: "12px 8px", borderRadius: 12,
+              border: customOpen ? "none" : "1px solid #DCD3B8",
+              background: customOpen ? COLORS.deepGreen : "white",
+              fontSize: 15, fontWeight: 700,
+              color: customOpen ? "white" : COLORS.ink,
+              cursor: sending ? "not-allowed" : "pointer",
+              opacity: sending ? 0.6 : 1,
+            }}
+          >✏️ 自行輸入</button>
+        </div>
+        {customOpen ? (
+          <div style={{ marginTop: 10 }}>
+            <textarea
+              value={text}
+              onChange={function (e) { setText(e.target.value); }}
+              placeholder="輸入想跟家人說的話…"
+              rows={3}
+              style={{
+                width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #DCD3B8",
+                fontSize: 16, lineHeight: 1.5, resize: "vertical", minHeight: 72,
+              }}
+            />
+            <button
+              type="button"
+              disabled={sending || !text.trim()}
+              onClick={function () { sendMessage(text); }}
+              style={{
+                width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 12, border: "none",
+                background: COLORS.plantGreen, color: "white", fontWeight: 800, fontSize: 16,
+                cursor: sending || !text.trim() ? "not-allowed" : "pointer",
+                opacity: sending || !text.trim() ? 0.6 : 1,
+              }}
+            >{sending ? "送出中…" : "📤 傳送給全體家人"}</button>
           </div>
-        )}
-      </Card>
-    </>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 
@@ -942,6 +1052,204 @@ function AchievementTab({ ctx }) {
   );
 }
 
+function formatMessageTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return (d.getMonth() + 1) + "/" + d.getDate() + " " + formatTime(iso);
+}
+
+const VAPID_PUBLIC_KEY = "BAlqllAupj_iyiZspGBj7x-bqvOY3po2ronD79XOCsFCv0Iw4gd0MO8iByLLnWeYFBp3V2lKuvApibdvRlIxcXU";
+
+function detectPlatform() {
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  if (/Windows|Macintosh|Linux/i.test(ua) && !/Mobile/i.test(ua)) return "desktop";
+  return "unknown";
+}
+
+function isIosDevice() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+}
+
+function isStandalonePwa() {
+  return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+}
+
+function isPushEnvironmentSupported() {
+  return location.protocol === "https:"
+    && "serviceWorker" in navigator
+    && "PushManager" in window
+    && "Notification" in window;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+function subscriptionToPayload(subscription) {
+  const json = subscription.toJSON();
+  return {
+    endpoint: json.endpoint,
+    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+  };
+}
+
+async function registerPushSubscription(personId, subscription) {
+  await postToSheet({
+    action: "registerPush",
+    personId,
+    subscription: subscriptionToPayload(subscription),
+    userAgent: navigator.userAgent || "",
+    platform: detectPlatform(),
+  });
+}
+
+function PushNotificationBlock({ myId, embedded }) {
+  const me = FAMILY.find((p) => p.id === myId);
+  const [status, setStatus] = useState("checking");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function check() {
+      if (!isPushEnvironmentSupported()) {
+        if (!cancelled) setStatus("unsupported");
+        return;
+      }
+      if (isIosDevice() && !isStandalonePwa()) {
+        if (!cancelled) setStatus("ios-hint");
+        return;
+      }
+      if (!VAPID_PUBLIC_KEY) {
+        if (!cancelled) setStatus("no-vapid");
+        return;
+      }
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (cancelled) return;
+        if (sub) setStatus("subscribed");
+        else if (Notification.permission === "denied") setStatus("denied");
+        else setStatus("idle");
+      } catch (e) {
+        if (!cancelled) setStatus("idle");
+      }
+    }
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleEnable = async () => {
+    if (!me || busy || !VAPID_PUBLIC_KEY) return;
+    setBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") {
+          setStatus(perm === "denied" ? "denied" : "idle");
+          setBusy(false);
+          return;
+        }
+        sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          });
+        }
+      }
+      await registerPushSubscription(me.sheetId, sub);
+      setStatus("subscribed");
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      alert("無法開啟手機通知：" + msg);
+      setStatus("idle");
+    }
+    setBusy(false);
+  };
+
+  const handleDisable = async () => {
+    if (!me || busy) return;
+    setBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        setStatus("closed");
+        setBusy(false);
+        return;
+      }
+      await postToSheet({
+        action: "unregisterPush",
+        personId: me.sheetId,
+        endpoint: sub.endpoint,
+      });
+      await sub.unsubscribe();
+      setStatus("closed");
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      alert("無法關閉手機通知：" + msg);
+    }
+    setBusy(false);
+  };
+
+  const statusText = {
+    checking: "檢查通知狀態…",
+    unsupported: "此瀏覽器不支援 Web Push",
+    "ios-hint": "🍎 iPhone 請先將網站加入主畫面，再開啟通知",
+    "no-vapid": "通知金鑰尚未設定，Push 功能暫時無法使用",
+    idle: "通知尚未開啟",
+    denied: "通知權限已被拒絕，請至瀏覽器設定中允許",
+    subscribed: "🟢 手機通知已開啟",
+    closed: "通知已關閉",
+  };
+
+  const showEnable = (status === "idle" || status === "closed") && status !== "no-vapid" && status !== "ios-hint" && status !== "unsupported";
+  const showDisable = status === "subscribed";
+
+  const inner = (
+    <>
+      <SectionTitle style={{ marginBottom: 6 }}>🔔 手機通知</SectionTitle>
+      <div style={{ fontSize: 14, color: "#8A7A5C", marginBottom: 10 }}>{statusText[status] || statusText.idle}</div>
+      {showEnable ? (
+        <button type="button" disabled={busy} onClick={handleEnable} style={{
+          width: "100%", padding: "10px 0", borderRadius: 12, border: "none",
+          background: COLORS.plantGreen, color: "white", fontWeight: 800, fontSize: 15,
+          cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1,
+        }}>{busy ? "處理中…" : "🔔 開啟手機通知"}</button>
+      ) : null}
+      {showDisable ? (
+        <button type="button" disabled={busy} onClick={handleDisable} style={{
+          width: "100%", padding: "10px 0", borderRadius: 12, border: "1px solid #DCD3B8",
+          background: "white", color: "#8A7A5C", fontWeight: 700, fontSize: 14,
+          cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1,
+        }}>{busy ? "處理中…" : "關閉手機通知"}</button>
+      ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div style={{ paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid #F0EAD8" }}>{inner}</div>
+    );
+  }
+
+  return (
+    <Card style={{ marginBottom: 12 }}>
+      {inner}
+    </Card>
+  );
+}
+
 function ReviewTab({ people, trip, progress, segments, photos, day1Result, guesses, feedbackHistory, tripFinished }) {
   if (!tripFinished) {
     return (
@@ -1030,16 +1338,21 @@ function ReviewTab({ people, trip, progress, segments, photos, day1Result, guess
 }
 
 function JourneyHome(props) {
-  const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, ...rest } = props;
+  const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, focusFamilySay, ...rest } = props;
   const next = STOPS[rest.progress.currentStop + 1];
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
-      <FeedbackSection feedback={rest.feedback} onRequest={rest.onRequestFeedback} onAcknowledge={rest.onAcknowledgeFeedback} />
       <JourneyStageCard progress={rest.progress} allHere={rest.checkedCount === 9} segments={rest.segments} onRequestAdvance={() => setPendingAdvance(true)} />
       <NextUpCard progress={rest.progress} />
       <ProgressTimeline progress={rest.progress} />
-      <AnnouncementSection announcements={rest.trip.announcements} onPost={rest.onPostAnnouncement} />
+      <FamilySaySection
+        announcements={rest.trip.announcements}
+        messages={rest.messages}
+        myId={rest.myId}
+        onSent={rest.onSent}
+        focusOnMount={focusFamilySay}
+      />
       <WeatherCard /><SafetyCard />
       <div style={{ margin: "16px 16px 0", padding: "14px 16px", borderRadius: 16, background: `linear-gradient(135deg, ${COLORS.gold}, #F2C463)`, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ fontSize: 24 }}>🥮</div>
@@ -1078,10 +1391,12 @@ function App() {
   const [guesses, setGuesses] = useState([]);
   const [segments, setSegments] = useState([]);
   const [photos, setPhotos] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [day1Result, setDay1Result] = useState(null);
   const [guessLocked, setGuessLocked] = useState(false);
   const [syncState, setSyncState] = useState("loading");
   const [pendingAdvance, setPendingAdvance] = useState(false);
+  const [focusFamilySay, setFocusFamilySay] = useState(false);
   const pollRef = useRef(null);
 
   const applyMembers = (members) => {
@@ -1101,6 +1416,7 @@ function App() {
       setGuesses(data.guesses);
       setSegments(data.segments);
       setPhotos(data.photos);
+      setMessages(data.messages);
       setDay1Result(data.day1Result);
       setGuessLocked(data.guessLocked);
       setTrip({ ...DEFAULT_TRIP, tasks: data.tasks, announcements: data.announcements });
@@ -1110,8 +1426,18 @@ function App() {
   };
 
   useEffect(() => {
-    const who = new URLSearchParams(window.location.search).get("who");
+    const params = new URLSearchParams(window.location.search);
+    const who = params.get("who");
+    const tabParam = params.get("tab");
+    const focusParam = params.get("focus");
     if (who) { const m = FAMILY.find((p) => p.sheetId === who); if (m) setMyId(m.id); }
+    if (tabParam === "messages") {
+      setTab("journey");
+      setFocusFamilySay(true);
+    } else if (tabParam && TABS.some((t) => t.key === tabParam)) {
+      setTab(tabParam);
+    }
+    if (focusParam === "family-say" || tabParam === "messages") setFocusFamilySay(true);
     setIdentityLoading(false);
   }, []);
 
@@ -1121,6 +1447,11 @@ function App() {
     pollRef.current = setInterval(fetchAll, POLL_MS);
     return () => clearInterval(pollRef.current);
   }, [myId]);
+
+  useEffect(() => {
+    if (location.protocol !== "https:" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("./service-worker.js").catch(function () {});
+  }, []);
 
   const me = FAMILY.find((p) => p.id === myId);
   const checkedCount = people.filter((p) => p.checkedIn).length;
@@ -1150,11 +1481,9 @@ function App() {
         onCheckInHome={async () => { await postToSheet({ action: "checkinHome", id: me.sheetId }); fetchAll(); }}
         onResetCheckin={async () => { await postToSheet({ action: "resetAll" }); fetchAll(); }}
         onResetCheckinHome={async () => { await postToSheet({ action: "resetAllHome" }); fetchAll(); }} />}
-      {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} feedback={feedback} trip={trip}
+      {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} trip={trip} messages={messages} myId={myId}
         pendingAdvance={pendingAdvance} setPendingAdvance={setPendingAdvance} handleConfirmAdvance={handleConfirmAdvance}
-        onRequestFeedback={async (type) => { await postToSheet({ action: "addFeedback", personId: me.sheetId, personName: me.name, type }); fetchAll(); }}
-        onAcknowledgeFeedback={async (id) => { await postToSheet({ action: "resolveFeedback", id }); fetchAll(); }}
-        onPostAnnouncement={async (text, level) => { await postToSheet({ action: "postAnnouncement", text, level }); fetchAll(); }} />}
+        focusFamilySay={focusFamilySay} onSent={fetchAll} />}
       {tab === "map" && <MapTab progress={progress} />}
       {tab === "quest" && <TaskTab trip={trip} progress={progress} checkedCount={checkedCount} photos={photos} myId={myId}
         onToggle={async (key) => { await postToSheet({ action: "toggleTask", taskKey: key, value: true }); fetchAll(); }}
