@@ -16,6 +16,42 @@
   html, body { margin: 0; padding: 0; background: #F3E9D2; overscroll-behavior: none; }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   input, button { font-family: inherit; }
+  @keyframes familyToastIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes familyToastOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-6px); }
+  }
+  .family-in-site-toast-wrap {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 99999;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    padding-left: 16px;
+    padding-right: 16px;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+  }
+  .family-in-site-toast {
+    width: 100%;
+    max-width: 388px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #1F4A3D;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.5;
+    word-break: break-word;
+    box-shadow: 0 8px 24px rgba(31,74,61,0.28);
+  }
+  .family-in-site-toast-in { animation: familyToastIn 0.35s ease forwards; }
+  .family-in-site-toast-out { animation: familyToastOut 0.4s ease forwards; }
 </style>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -757,6 +793,16 @@ function getPendingMessages(messages, messageAcks, mySheetId) {
     });
 }
 
+function getMessageHistory(messages, pendingIds, limit) {
+  const max = limit || 15;
+  return (messages || [])
+    .filter(function (m) { return !pendingIds[m.messageId]; })
+    .sort(function (a, b) {
+      return (new Date(b.createdAt).getTime() || 0) - (new Date(a.createdAt).getTime() || 0);
+    })
+    .slice(0, max);
+}
+
 function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, focusOnMount, pushStats }) {
   const me = FAMILY.find(function (p) { return p.id === myId; });
   const sectionRef = useRef(null);
@@ -769,6 +815,9 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
   const [annSending, setAnnSending] = useState(false);
 
   const pendingMessages = getPendingMessages(messages, messageAcks, me && me.sheetId);
+  const pendingIds = {};
+  pendingMessages.forEach(function (m) { pendingIds[m.messageId] = true; });
+  const messageHistory = getMessageHistory(messages, pendingIds, 15);
   const sortedAnnouncements = (announcements || []).slice().sort(function (a, b) {
     return (Number(b.ts) || 0) - (Number(a.ts) || 0);
   });
@@ -944,6 +993,35 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
                 opacity: sending || !text.trim() ? 0.6 : 1,
               }}
             >{sending ? "送出中…" : "📤 傳送給全體家人"}</button>
+          </div>
+        ) : null}
+
+        {messageHistory.length > 0 ? (
+          <div style={{ marginTop: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#8A7A5C", marginBottom: 8 }}>訊息紀錄</div>
+            <div style={{
+              maxHeight: 220, overflowY: "auto", WebkitOverflowScrolling: "touch",
+              padding: "4px 0",
+            }}>
+              {messageHistory.map(function (m) {
+                const isMine = me && m.senderId === me.sheetId;
+                return (
+                  <div key={m.messageId} style={{
+                    marginBottom: 8, padding: "10px 12px", borderRadius: 12,
+                    background: isMine ? "#E8F3EA" : COLORS.cream,
+                    border: isMine ? "1px solid #C8E6CF" : "1px solid #F0EAD8",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: isMine ? COLORS.deepGreen : COLORS.ink }}>
+                        {m.senderName}{isMine ? "（我）" : ""}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#B0A480", flexShrink: 0 }}>{formatMessageTime(m.createdAt)}</div>
+                    </div>
+                    <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.message}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
@@ -1482,17 +1560,32 @@ function ReviewTab({ people, trip, progress, segments, photos, day1Result, guess
   );
 }
 
-function InSiteToast({ toast }) {
+const TOAST_SHOW_MS = 8000;
+const TOAST_FADE_MS = 400;
+
+function showInSiteToastHelper(setToast, setFading, toastTimerRef, fadeTimerRef, payload) {
+  setFading(false);
+  setToast(payload);
+  if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+  toastTimerRef.current = setTimeout(function () {
+    setFading(true);
+    fadeTimerRef.current = setTimeout(function () {
+      setToast(null);
+      setFading(false);
+    }, TOAST_FADE_MS);
+  }, TOAST_SHOW_MS);
+}
+
+function InSiteToast({ toast, fading }) {
   if (!toast) return null;
-  return (
-    <div style={{
-      position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 9999,
-      width: "calc(100% - 32px)", maxWidth: 388, padding: "12px 16px", borderRadius: 14,
-      background: COLORS.deepGreen, color: "white", fontSize: 15, fontWeight: 700,
-      boxShadow: "0 8px 24px rgba(31,74,61,0.28)", lineHeight: 1.45,
-    }}>
-      🔔 {toast.senderName}：{toast.message}
-    </div>
+  return ReactDOM.createPortal(
+    <div className="family-in-site-toast-wrap">
+      <div className={"family-in-site-toast " + (fading ? "family-in-site-toast-out" : "family-in-site-toast-in")}>
+        🔔 {toast.senderName}：{toast.message}
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1502,9 +1595,6 @@ function JourneyHome(props) {
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
-      <JourneyStageCard progress={rest.progress} allHere={rest.checkedCount === 9} segments={rest.segments} onRequestAdvance={() => setPendingAdvance(true)} />
-      <NextUpCard progress={rest.progress} />
-      <ProgressTimeline progress={rest.progress} />
       <FamilySaySection
         announcements={rest.trip.announcements}
         messages={rest.messages}
@@ -1514,6 +1604,9 @@ function JourneyHome(props) {
         focusOnMount={focusFamilySay}
         pushStats={rest.pushStats}
       />
+      <JourneyStageCard progress={rest.progress} allHere={rest.checkedCount === 9} segments={rest.segments} onRequestAdvance={() => setPendingAdvance(true)} />
+      <NextUpCard progress={rest.progress} />
+      <ProgressTimeline progress={rest.progress} />
       <WeatherCard /><SafetyCard />
       <div style={{ margin: "16px 16px 0", padding: "14px 16px", borderRadius: 16, background: `linear-gradient(135deg, ${COLORS.gold}, #F2C463)`, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ fontSize: 24 }}>🥮</div>
@@ -1555,6 +1648,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [messageAcks, setMessageAcks] = useState([]);
   const [inSiteToast, setInSiteToast] = useState(null);
+  const [toastFading, setToastFading] = useState(false);
   const [pushStats, setPushStats] = useState({ activeSubscriptionCount: 0 });
   const [day1Result, setDay1Result] = useState(null);
   const [guessLocked, setGuessLocked] = useState(false);
@@ -1564,6 +1658,7 @@ function App() {
   const pollRef = useRef(null);
   const prevMsgIdsRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const toastFadeTimerRef = useRef(null);
 
   const applyMembers = (members) => {
     setPeople((prev) => prev.map((p) => {
@@ -1598,9 +1693,10 @@ function App() {
         });
         if (fresh.length && document.visibilityState === "visible") {
           const latest = fresh[fresh.length - 1];
-          setInSiteToast({ senderName: latest.senderName, message: latest.message });
-          if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-          toastTimerRef.current = setTimeout(function () { setInSiteToast(null); }, 5000);
+          showInSiteToastHelper(setInSiteToast, setToastFading, toastTimerRef, toastFadeTimerRef, {
+            senderName: latest.senderName,
+            message: latest.message,
+          });
         }
       }
       prevMsgIdsRef.current = new Set((data.messages || []).map(function (m) { return m.messageId; }));
@@ -1634,18 +1730,26 @@ function App() {
   useEffect(() => {
     if (location.protocol !== "https:" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("./service-worker.js").catch(function () {});
-    const onSwMessage = function (event) {
+    function onSwMessage(event) {
       if (!event.data || event.data.type !== "family-push") return;
+      if (document.visibilityState !== "visible") return;
       const body = String(event.data.body || "");
       const colon = body.indexOf("：");
       const senderName = colon >= 0 ? body.slice(0, colon) : "家人";
       const message = colon >= 0 ? body.slice(colon + 1) : body;
-      setInSiteToast({ senderName: senderName, message: message });
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = setTimeout(function () { setInSiteToast(null); }, 5000);
-    };
+      showInSiteToastHelper(setInSiteToast, setToastFading, toastTimerRef, toastFadeTimerRef, {
+        senderName: senderName,
+        message: message,
+      });
+    }
     navigator.serviceWorker.addEventListener("message", onSwMessage);
-    return function () { navigator.serviceWorker.removeEventListener("message", onSwMessage); };
+    if (navigator.serviceWorker.onmessage === null || navigator.serviceWorker.onmessage === undefined) {
+      navigator.serviceWorker.onmessage = onSwMessage;
+    }
+    return function () {
+      navigator.serviceWorker.removeEventListener("message", onSwMessage);
+      if (navigator.serviceWorker.onmessage === onSwMessage) navigator.serviceWorker.onmessage = null;
+    };
   }, []);
 
   const me = FAMILY.find((p) => p.id === myId);
@@ -1671,7 +1775,7 @@ function App() {
 
   return (
     <div style={shellStyle}>
-      <InSiteToast toast={inSiteToast} />
+      <InSiteToast toast={inSiteToast} fading={toastFading} />
       {tab === "checkin" && <CheckinTab people={people} myId={myId} loaded={loaded} syncState={syncState} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} onSaved={fetchAll}
         onCheckIn={async () => { await postToSheet({ action: "checkin", id: me.sheetId }); fetchAll(); }}
         onCheckInHome={async () => { await postToSheet({ action: "checkinHome", id: me.sheetId }); fetchAll(); }}
