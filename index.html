@@ -30,11 +30,16 @@ const { useState, useEffect, useRef } = React;
 
 // ---- helpers ----
 async function postToSheet(body) {
-  const res = await fetch(WEBAPP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(body),
-  });
+  let res;
+  try {
+    // Safari/iOS：不可帶 charset，否則會觸發 CORS preflight，GAS 不支援 OPTIONS →「Load failed」
+    res = await fetch(WEBAPP_URL, {
+      method: "POST",
+      body: new Blob([JSON.stringify(body)], { type: "text/plain" }),
+    });
+  } catch (networkErr) {
+    throw new Error("網路連線失敗（" + (networkErr && networkErr.message ? networkErr.message : "Load failed") + "）");
+  }
   if (!res.ok) throw new Error("POST failed: " + res.status);
   const data = await res.json();
   if (!data || !data.ok) throw new Error(data && data.error ? String(data.error) : "bad payload");
