@@ -264,8 +264,14 @@ function mapStopDesc(stopId) {
   return "Day " + s.day + " · " + s.time + (s.note ? "（" + s.note + "）" : "");
 }
 
+const MEETING_DISPLAY = {
+  label: "旗山" + TRIP.meeting.place,
+  navName: TRIP.meeting.place + (TRIP.meeting.address ? " " + TRIP.meeting.address : ""),
+  mapDesc: "Day 1 · " + TRIP.meeting.time + " 集合",
+};
+
 const MAP_DESTINATIONS = [
-  { type: "集合地點", icon: "📍", label: "俗ㄆㄤˋ碳烤三明治", navName: "俗ㄆㄤˋ碳烤三明治 高雄市旗山區竹峰里中正路350號", desc: "高雄市旗山區竹峰里中正路350號 · Day 1 · " + TRIP.meeting.time + " 準時集合" },
+  { type: "集合地點", icon: "📍", label: MEETING_DISPLAY.label, navName: MEETING_DISPLAY.navName, desc: MEETING_DISPLAY.mapDesc, meetingCard: true },
   { type: "出發", icon: "🏍️", label: "台3線出發", navName: "台3線 高雄旗山", stopId: 0 },
   { type: "餐廳", icon: "🍜", label: "伯恭甕缸雞", navName: "伯恭甕缸雞 雲林古坑", stopId: 1 },
   { type: "景點", icon: "🌿", label: "古坑好農", navName: "古坑好農 雲林", stopId: 2 },
@@ -418,10 +424,7 @@ function InfoStrip() {
     <div style={{ display: "flex", gap: 10, margin: "-18px 16px 0", position: "relative", zIndex: 2 }}>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
         <SectionTitle>📍 集合地點</SectionTitle>
-        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{TRIP.meeting.place}</div>
-        {TRIP.meeting.address ? (
-          <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, marginTop: 4, lineHeight: 1.4 }}>{TRIP.meeting.address}</div>
-        ) : null}
+        <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{MEETING_DISPLAY.label}</div>
       </div>
       <div style={{ flex: 1, background: COLORS.warmWhite, borderRadius: 16, padding: "10px 14px", boxShadow: "0 8px 20px rgba(31,74,61,0.18)" }}>
         <SectionTitle>⏰ 集合時間</SectionTitle>
@@ -1273,14 +1276,23 @@ function MapTab({ progress }) {
       {MAP_DESTINATIONS.map((loc, i) => {
         const desc = loc.desc || (loc.stopId != null ? mapStopDesc(loc.stopId) : "");
         const navUrl = loc.noNav ? null : googleMapsNavUrl({ lat: loc.lat, lng: loc.lng, name: loc.navName || loc.label });
+        const meetingCard = !!loc.meetingCard;
         return (
           <Card key={loc.label + i} style={{ padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <div style={{ fontSize: 22, lineHeight: 1.2 }}>{loc.icon}</div>
+              {meetingCard ? null : <div style={{ fontSize: 22, lineHeight: 1.2 }}>{loc.icon}</div>}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <SectionTitle>{loc.type}</SectionTitle>
+                <SectionTitle>{meetingCard ? "📍 集合地點" : loc.type}</SectionTitle>
                 <div style={{ fontSize: 17, color: COLORS.ink, fontWeight: 700, marginTop: 2 }}>{loc.label}</div>
-                {desc ? <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 4, lineHeight: 1.4 }}>{desc}</div> : null}
+                {desc ? (
+                  <div style={{
+                    fontSize: meetingCard ? 16 : 14,
+                    color: meetingCard ? COLORS.ink : "#8A7A5C",
+                    fontWeight: meetingCard ? 700 : 400,
+                    marginTop: 4,
+                    lineHeight: 1.4,
+                  }}>{desc}</div>
+                ) : null}
                 {navUrl ? (
                   <a href={navUrl} target="_blank" rel="noopener noreferrer" style={{
                     display: "inline-block", marginTop: 10, padding: "8px 14px", borderRadius: 999,
