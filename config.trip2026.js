@@ -6,7 +6,11 @@ const TRIP = {
   title: "2026 雲林二日機車小旅行",
   subtitle1: "瓦特鎮家族",
   subtitle2: "去哪裡? 跟家人走就對了!",
-  meeting: { place: "旗山早餐店", time: "上午 8:30" },
+  meeting: {
+    place: "俗ㄆㄤˋ碳烤三明治",
+    address: "高雄市旗山區竹峰里中正路350號",
+    time: "上午 8:30",
+  },
   webappUrl:
     "https://script.google.com/macros/s/AKfycbzeocoHvNHF4HRVwGSf_wGYs_R_lKsNsAHy_thyvrXwEwERdDcjfNTWAIGhNSfVUo8-cA/exec",
   pollMs: 4000,
@@ -25,7 +29,7 @@ const TRIP = {
     { id: 6, day: 2, time: "09:30", name: "民宿出發" },
     { id: 7, day: 2, time: "10:20", name: "五元兩角" },
     { id: 8, day: 2, time: "11:30", name: "雲嶺之丘" },
-    { id: 9, day: 2, time: "12:00", name: "午餐" },
+    { id: 9, day: 2, time: "12:00", name: "山中美食館", address: "646 雲林縣古坑鄉草嶺村37-17號" },
     { id: 10, day: 2, time: "13:30", name: "草嶺下山" },
     { id: 11, day: 2, time: "約17:00", name: "抵達永康" },
     { id: 12, day: 2, time: "17:30", name: "東悅坊慶功宴" },
@@ -38,7 +42,8 @@ const TRIP = {
   locations: [
     {
       type: "集合地點", icon: "📍", stopId: null,
-      name: "旗山早餐店", desc: "8:30 準時集合，記得吃早餐再出發！",
+      name: "俗ㄆㄤˋ碳烤三明治",
+      desc: "高雄市旗山區竹峰里中正路350號 · 8:30 準時集合，記得吃早餐再出發！",
       configured: true, lat: 22.8724, lng: 120.4297,
     },
     {
