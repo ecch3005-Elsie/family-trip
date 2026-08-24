@@ -989,6 +989,16 @@ function FamilySaySection({ announcements, messages, messageAcks, myId, onSent, 
           <button
             type="button"
             disabled={sending}
+            onClick={function () { sendMessage("🐔 起床⋯咕咕咕"); }}
+            style={{
+              padding: "12px 8px", borderRadius: 12, border: "1px solid #DCD3B8", background: "white",
+              fontSize: 15, fontWeight: 700, color: COLORS.ink, cursor: sending ? "not-allowed" : "pointer",
+              opacity: sending ? 0.6 : 1,
+            }}
+          >🐔 起床⋯咕咕咕</button>
+          <button
+            type="button"
+            disabled={sending}
             onClick={function () { setCustomOpen(!customOpen); }}
             style={{
               padding: "12px 8px", borderRadius: 12,
