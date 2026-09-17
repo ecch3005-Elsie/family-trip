@@ -942,7 +942,7 @@ function Day1ArrivePanel({ isAdmin, day1Challenge, onFinalize, saving }) {
   );
 }
 
-function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Result, isAdmin, onRequestAdvance, onStartDay2, onSaveDay1Start, onFinalizeDay1, savingDay1 }) {
+function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Result, isAdmin, onRequestAdvance, onStartDay2, onSaveDay1Start, onFinalizeDay1, savingDay1, savingAdvance, advanceError }) {
   const current = progress.currentStop >= 0 ? stopById(progress.currentStop) : null;
   const next = nextStop(progress.currentStop);
   const finished = current && !nextStop(current.id) && dayOf(current.id) === 2;
@@ -1001,21 +1001,39 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
             今天辛苦啦，明早 {day2Start ? day2Start.time : "09:30"} 民宿出發 🛵
           </div>
           {isAdmin ? (
-            <button onClick={() => onStartDay2()} style={{
-              width: "100%", marginTop: 14, marginBottom: 8, padding: "12px 0", borderRadius: 14, cursor: "pointer",
-              border: "none", background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`, color: "white", fontWeight: 800, fontSize: 16,
-            }}>🏍️ Day 2 民宿出發</button>
+            <button
+              disabled={savingAdvance}
+              onClick={() => { if (!savingAdvance) onStartDay2(); }}
+              style={{
+                width: "100%", marginTop: 14, marginBottom: 8, padding: "12px 0", borderRadius: 14,
+                cursor: savingAdvance ? "default" : "pointer",
+                border: "none", background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`, color: "white", fontWeight: 800, fontSize: 16,
+                opacity: savingAdvance ? 0.75 : 1,
+              }}
+            >{savingAdvance ? "更新中…" : "🏍️ Day 2 民宿出發"}</button>
           ) : (
             <div style={{ fontSize: 15, fontWeight: 600, color: "#8A7A5C", marginTop: 12, marginBottom: 8, lineHeight: 1.5 }}>等待管理者開始 Day 2 🛵</div>
           )}
+          {advanceError ? (
+            <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.orange, marginBottom: 8 }}>{advanceError}</div>
+          ) : null}
         </div>
       )}
       {progress.currentStop >= 0 && next && !waitingAtInn && !day1Complete && (
-        <button onClick={() => onRequestAdvance()} style={{
-          width: "100%", marginTop: 14, padding: "12px 0", borderRadius: 14, cursor: "pointer",
-          border: `1px solid ${COLORS.plantGreen}`, background: "white", color: COLORS.plantGreen, fontWeight: 700, fontSize: 15,
-        }}>✅ 抵達下一站：{next.name}</button>
+        <button
+          disabled={savingAdvance}
+          onClick={() => { if (!savingAdvance) onRequestAdvance(); }}
+          style={{
+            width: "100%", marginTop: 14, padding: "12px 0", borderRadius: 14,
+            cursor: savingAdvance ? "default" : "pointer",
+            border: `1px solid ${COLORS.plantGreen}`, background: "white", color: COLORS.plantGreen, fontWeight: 700, fontSize: 15,
+            opacity: savingAdvance ? 0.75 : 1,
+          }}
+        >{savingAdvance ? "更新中…" : "✅ 抵達下一站：" + next.name}</button>
       )}
+      {advanceError && !(day1Complete && isAdmin) ? (
+        <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.orange, marginTop: 10 }}>{advanceError}</div>
+      ) : null}
     </Card>
   );
 }
@@ -1998,6 +2016,8 @@ function JourneyHome(props) {
         day1Result={rest.day1Result}
         isAdmin={rest.isAdmin}
         savingDay1={rest.savingDay1}
+        savingAdvance={rest.savingAdvance}
+        advanceError={rest.advanceError}
         onRequestAdvance={requestAdvance}
         onStartDay2={handleStartDay2}
         onSaveDay1Start={rest.onSaveDay1Start}
@@ -2054,11 +2074,14 @@ function App() {
   const [syncState, setSyncState] = useState("loading");
   const [pendingAdvance, setPendingAdvance] = useState(false);
   const [savingDay1, setSavingDay1] = useState(false);
+  const [savingAdvance, setSavingAdvance] = useState(false);
+  const [advanceError, setAdvanceError] = useState("");
   const [focusFamilySay, setFocusFamilySay] = useState(false);
   const pollRef = useRef(null);
   const prevMsgIdsRef = useRef(null);
   const toastTimerRef = useRef(null);
   const toastFadeTimerRef = useRef(null);
+  const advanceInFlightRef = useRef(false);
 
   const applyMembers = (members) => {
     setPeople((prev) => prev.map((p) => {
@@ -2067,13 +2090,16 @@ function App() {
     }));
   };
 
-  const fetchAll = async () => {
+  const fetchAll = async (opts) => {
+    const forceProgress = !!(opts && opts.forceProgress);
     let ok = true;
     try {
       const data = await fetchSheetData();
       applyMembers(data.members);
       setFeedback(data.feedback);
-      setProgress(data.progress);
+      if (forceProgress || !advanceInFlightRef.current) {
+        setProgress(data.progress);
+      }
       setGuesses(data.guesses);
       setSegments(data.segments);
       setPhotos(data.photos);
@@ -2168,28 +2194,46 @@ function App() {
   const tripFinished = isTripReviewUnlocked();
 
   const handleConfirmAdvance = async (km) => {
+    if (savingAdvance || advanceInFlightRef.current) return;
     const nxt = nextStop(progress.currentStop);
     if (!nxt) return;
     const nextIndex = nxt.id;
-    setProgress({ currentStop: nextIndex });
+    advanceInFlightRef.current = true;
+    setSavingAdvance(true);
+    setAdvanceError("");
     try {
       const body = { action: "setStop", stopIndex: nextIndex, recordedBy: me?.sheetId || "" };
       if (km !== null && km !== undefined && km !== "") body.segmentKm = km;
       await postToSheet(body);
+      await fetchAll({ forceProgress: true });
       setSyncState("ok");
-      fetchAll();
-    } catch (e) { setSyncState("error"); }
+    } catch (e) {
+      setSyncState("error");
+      setAdvanceError("更新失敗，請再試一次");
+    } finally {
+      advanceInFlightRef.current = false;
+      setSavingAdvance(false);
+    }
   };
 
   const handleStartDay2 = async () => {
     if (!isAdminPerson(me)) return;
     if (progress.currentStop !== DAY1_LAST_ID) return;
-    setProgress({ currentStop: DAY2_START_ID });
+    if (savingAdvance || advanceInFlightRef.current) return;
+    advanceInFlightRef.current = true;
+    setSavingAdvance(true);
+    setAdvanceError("");
     try {
       await postToSheet({ action: "setStop", stopIndex: DAY2_START_ID, recordedBy: me?.sheetId || "", startDay2: true });
+      await fetchAll({ forceProgress: true });
       setSyncState("ok");
-      fetchAll();
-    } catch (e) { setSyncState("error"); }
+    } catch (e) {
+      setSyncState("error");
+      setAdvanceError("更新失敗，請再試一次");
+    } finally {
+      advanceInFlightRef.current = false;
+      setSavingAdvance(false);
+    }
   };
 
   const handleSaveDay1Start = async ({ odometer, startTime }) => {
@@ -2236,6 +2280,7 @@ function App() {
       {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} trip={trip} messages={messages} messageAcks={messageAcks} pushStats={pushStats} myId={myId}
         pendingAdvance={pendingAdvance} setPendingAdvance={setPendingAdvance} handleConfirmAdvance={handleConfirmAdvance} handleStartDay2={handleStartDay2}
         day1Challenge={day1Challenge} day1Result={day1Result} isAdmin={isAdminPerson(me)} savingDay1={savingDay1}
+        savingAdvance={savingAdvance} advanceError={advanceError}
         onSaveDay1Start={handleSaveDay1Start} onFinalizeDay1={handleFinalizeDay1}
         focusFamilySay={focusFamilySay} onSent={fetchAll} />}
       {tab === "map" && <MapTab progress={progress} />}
