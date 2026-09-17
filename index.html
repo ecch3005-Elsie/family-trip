@@ -222,6 +222,26 @@ function isDay1ProgressStop(stopIndex) {
   return stopIndex >= 1 && stopIndex <= DAY1_ACCOMMODATION_STOP_ID;
 }
 
+const DAY1_LAST_ID = 5;
+const DAY2_START_ID = 6;
+
+function stopById(id) {
+  return STOPS.find((s) => s.id === id) || null;
+}
+
+function dayOf(id) {
+  const s = stopById(id);
+  return s ? s.day : null;
+}
+
+function nextStop(id) {
+  const current = stopById(id);
+  if (!current) return null;
+  const upcoming = STOPS.filter((s) => s.day === current.day && s.id > current.id);
+  upcoming.sort((a, b) => a.id - b.id);
+  return upcoming[0] || null;
+}
+
 const EMPTY_DAY1_CHALLENGE = { startOdometer: null, startTime: "", endOdometer: null, arrivalTime: "", finalized: false };
 
 const DAY1_FIELD_INPUT = {
@@ -273,8 +293,12 @@ function isTripReviewUnlocked(now = new Date()) {
 
 function resolveLocationEntry(loc, progress) {
   if (loc.dynamicNext) {
-    const next = STOPS[(progress?.currentStop ?? -1) + 1];
+    const currentId = progress?.currentStop ?? -1;
+    const next = currentId < 0 ? stopById(0) : nextStop(currentId);
     if (!next) {
+      if (dayOf(currentId) === 1) {
+        return { ...loc, name: "Day 1 行程完成", desc: "明早民宿出發", configured: false, lat: null, lng: null };
+      }
       return { ...loc, name: "行程已完成", desc: "全部站點都跑完了", configured: false, lat: null, lng: null };
     }
     const hasCoords = next.lat != null && next.lng != null;
@@ -288,7 +312,7 @@ function resolveLocationEntry(loc, progress) {
     };
   }
   if (loc.stopId != null) {
-    const stop = STOPS.find((s) => s.id === loc.stopId);
+    const stop = stopById(loc.stopId);
     if (stop && stop.lat != null && stop.lng != null) {
       return { ...loc, lat: stop.lat, lng: stop.lng, configured: true };
     }
@@ -335,7 +359,7 @@ const MAP_DESTINATIONS = [
   { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 3 },
   { type: "景點", icon: "☕", label: "華山咖啡大街", navName: "華山咖啡大街 雲林古坑", stopId: 4 },
   { type: "景點", icon: "🏛️", label: "華山會館", navName: "華山會館 雲林古坑", stopId: 5 },
-  { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 6, departDisplay: true },
+  { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 6, departDisplay: true, noNav: true },
   { type: "景點", icon: "🎋", label: "五元兩角", navName: "五元兩角 雲林", stopId: 7 },
   { type: "景點", icon: "⛰️", label: "雲嶺之丘", navName: "雲嶺之丘 雲林古坑", stopId: 8 },
   { type: "餐廳", icon: "🍜", label: "山中美食館", navName: (function () {
@@ -918,15 +942,19 @@ function Day1ArrivePanel({ isAdmin, day1Challenge, onFinalize, saving }) {
   );
 }
 
-function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Result, isAdmin, onRequestAdvance, onSaveDay1Start, onFinalizeDay1, savingDay1 }) {
-  const current = progress.currentStop >= 0 ? STOPS[progress.currentStop] : null;
-  const next = STOPS[progress.currentStop + 1];
-  const finished = progress.currentStop === STOPS.length - 1;
+function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Result, isAdmin, onRequestAdvance, onStartDay2, onSaveDay1Start, onFinalizeDay1, savingDay1 }) {
+  const current = progress.currentStop >= 0 ? stopById(progress.currentStop) : null;
+  const next = nextStop(progress.currentStop);
+  const finished = current && !nextStop(current.id) && dayOf(current.id) === 2;
   const challenge = day1Challenge || EMPTY_DAY1_CHALLENGE;
   const finalized = !!(day1Result || challenge.finalized);
   const waitingAtInn = progress.currentStop === DAY1_ACCOMMODATION_STOP_ID && !finalized;
+  const day1Complete = progress.currentStop === DAY1_LAST_ID;
+  const isDay1Journey = dayOf(progress.currentStop) === 1;
   const showStartForm = allHere && progress.currentStop === -1;
-  const showChallengeBanner = progress.currentStop >= 0 && challenge.startOdometer != null && !(waitingAtInn && !isAdmin);
+  const showChallengeBanner = isDay1Journey && progress.currentStop >= 0 && challenge.startOdometer != null && !(waitingAtInn && !isAdmin);
+  const showDay1Result = isDay1Journey && finalized && day1Result;
+  const day2Start = stopById(DAY2_START_ID);
 
   return (
     <Card>
@@ -946,7 +974,7 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
           </div>
         </div>
       )}
-      {finalized && day1Result && (
+      {showDay1Result && (
         <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 14, background: "#FDF1D6" }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.deepGreen }}>🏁 Day 1 挑戰完成！</div>
           <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
@@ -962,7 +990,23 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
       )}
       {showStartForm && <Day1StartPanel isAdmin={isAdmin} onSave={onSaveDay1Start} saving={savingDay1} />}
       {waitingAtInn && <Day1ArrivePanel isAdmin={isAdmin} day1Challenge={challenge} onFinalize={onFinalizeDay1} saving={savingDay1} />}
-      {progress.currentStop >= 0 && next && !waitingAtInn && (
+      {day1Complete && (
+        <div style={{ marginTop: 14, padding: "14px 14px 4px", borderRadius: 16, background: "#FFF8E4" }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen }}>🌙 Day 1 行程完成！</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#8A7A5C", marginTop: 8, lineHeight: 1.6 }}>
+            今天辛苦啦，明早 {day2Start ? day2Start.time : "09:30"} 民宿出發 🛵
+          </div>
+          {isAdmin ? (
+            <button onClick={() => onStartDay2()} style={{
+              width: "100%", marginTop: 14, marginBottom: 8, padding: "12px 0", borderRadius: 14, cursor: "pointer",
+              border: "none", background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`, color: "white", fontWeight: 800, fontSize: 16,
+            }}>🏍️ Day 2 民宿出發</button>
+          ) : (
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#8A7A5C", marginTop: 12, marginBottom: 8, lineHeight: 1.5 }}>等待管理者開始 Day 2 🛵</div>
+          )}
+        </div>
+      )}
+      {progress.currentStop >= 0 && next && !waitingAtInn && !day1Complete && (
         <button onClick={() => onRequestAdvance()} style={{
           width: "100%", marginTop: 14, padding: "12px 0", borderRadius: 14, cursor: "pointer",
           border: `1px solid ${COLORS.plantGreen}`, background: "white", color: COLORS.plantGreen, fontWeight: 700, fontSize: 15,
@@ -973,7 +1017,21 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
 }
 
 function NextUpCard({ progress }) {
-  const next = STOPS[progress.currentStop + 1];
+  const day2Start = stopById(DAY2_START_ID);
+  if (progress.currentStop === DAY1_LAST_ID) {
+    return (
+      <Card>
+        <SectionTitle>⏰ 下一個重要時間</SectionTitle>
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1.4 }}>🌙 Day 1 行程完成</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#B0A480", letterSpacing: 0.3, marginTop: 12 }}>預定</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1.2 }}>明日 {day2Start ? day2Start.time : "09:30"}</div>
+          <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>🏍️ {day2Start ? day2Start.name : "民宿出發"}</div>
+        </div>
+      </Card>
+    );
+  }
+  const next = progress.currentStop < 0 ? stopById(0) : nextStop(progress.currentStop);
   return (
     <Card>
       <SectionTitle>⏰ 下一個重要時間</SectionTitle>
@@ -994,7 +1052,16 @@ function NextUpCard({ progress }) {
 }
 
 function ProgressTimeline({ progress }) {
-  const [day, setDay] = useState(1);
+  const stopDay = dayOf(progress.currentStop) || 1;
+  const [day, setDay] = useState(stopDay);
+  const lastStopDayRef = useRef(stopDay);
+  useEffect(() => {
+    const d = dayOf(progress.currentStop) || 1;
+    if (d !== lastStopDayRef.current) {
+      setDay(d);
+      lastStopDayRef.current = d;
+    }
+  }, [progress.currentStop]);
   const stops = STOPS.filter((s) => s.day === day);
   return (
     <Card>
@@ -1902,8 +1969,8 @@ function InSiteToast({ toast, fading }) {
 }
 
 function JourneyHome(props) {
-  const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, focusFamilySay, ...rest } = props;
-  const next = STOPS[rest.progress.currentStop + 1];
+  const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, handleStartDay2, focusFamilySay, ...rest } = props;
+  const next = nextStop(rest.progress.currentStop);
   const requestAdvance = () => {
     handleConfirmAdvance(null);
   };
@@ -1928,6 +1995,7 @@ function JourneyHome(props) {
         isAdmin={rest.isAdmin}
         savingDay1={rest.savingDay1}
         onRequestAdvance={requestAdvance}
+        onStartDay2={handleStartDay2}
         onSaveDay1Start={rest.onSaveDay1Start}
         onFinalizeDay1={rest.onFinalizeDay1}
       />
@@ -2096,12 +2164,25 @@ function App() {
   const tripFinished = isTripReviewUnlocked();
 
   const handleConfirmAdvance = async (km) => {
-    const nextIndex = Math.min(progress.currentStop + 1, STOPS.length - 1);
+    const nxt = nextStop(progress.currentStop);
+    if (!nxt) return;
+    const nextIndex = nxt.id;
     setProgress({ currentStop: nextIndex });
     try {
       const body = { action: "setStop", stopIndex: nextIndex, recordedBy: me?.sheetId || "" };
       if (km !== null && km !== undefined && km !== "") body.segmentKm = km;
       await postToSheet(body);
+      setSyncState("ok");
+      fetchAll();
+    } catch (e) { setSyncState("error"); }
+  };
+
+  const handleStartDay2 = async () => {
+    if (!isAdminPerson(me)) return;
+    if (progress.currentStop !== DAY1_LAST_ID) return;
+    setProgress({ currentStop: DAY2_START_ID });
+    try {
+      await postToSheet({ action: "setStop", stopIndex: DAY2_START_ID, recordedBy: me?.sheetId || "" });
       setSyncState("ok");
       fetchAll();
     } catch (e) { setSyncState("error"); }
@@ -2149,7 +2230,7 @@ function App() {
         onResetCheckin={async () => { await postToSheet({ action: "resetAll" }); fetchAll(); }}
         onResetCheckinHome={async () => { await postToSheet({ action: "resetAllHome" }); fetchAll(); }} />}
       {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} trip={trip} messages={messages} messageAcks={messageAcks} pushStats={pushStats} myId={myId}
-        pendingAdvance={pendingAdvance} setPendingAdvance={setPendingAdvance} handleConfirmAdvance={handleConfirmAdvance}
+        pendingAdvance={pendingAdvance} setPendingAdvance={setPendingAdvance} handleConfirmAdvance={handleConfirmAdvance} handleStartDay2={handleStartDay2}
         day1Challenge={day1Challenge} day1Result={day1Result} isAdmin={isAdminPerson(me)} savingDay1={savingDay1}
         onSaveDay1Start={handleSaveDay1Start} onFinalizeDay1={handleFinalizeDay1}
         focusFamilySay={focusFamilySay} onSent={fetchAll} />}
