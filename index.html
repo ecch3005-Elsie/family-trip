@@ -182,9 +182,9 @@ function formatGuessTime(value) {
 }
 
 function guessTimeToMinutes(value) {
-  const t = formatGuessTime(value);
-  if (t === "—") return 0;
-  const parts = t.split(":");
+  const hhmm = normalizeHhmm(value);
+  if (!hhmm) return 0;
+  const parts = hhmm.split(":");
   return Number(parts[0]) * 60 + Number(parts[1] || 0);
 }
 
@@ -306,6 +306,14 @@ function mapStopDesc(stopId) {
   return "Day " + s.day + " · " + s.time + (s.note ? "（" + s.note + "）" : "");
 }
 
+function mapCardTimeText(loc) {
+  if (loc.desc) return loc.desc;
+  if (loc.stopId == null) return "";
+  const base = mapStopDesc(loc.stopId);
+  if (!base) return "";
+  return loc.departDisplay ? "🛵 " + base + " 出發" : base;
+}
+
 const MEETING_DISPLAY = {
   label: "旗山" + TRIP.meeting.place,
   navName: TRIP.meeting.place + (TRIP.meeting.address ? " " + TRIP.meeting.address : ""),
@@ -320,14 +328,14 @@ const MAP_DAY_TIME_STYLE = {
 };
 
 const MAP_DESTINATIONS = [
-  { type: "集合地點", icon: "📍", label: MEETING_DISPLAY.label, navName: MEETING_DISPLAY.navName, desc: MEETING_DISPLAY.mapDesc, meetingCard: true },
+  { type: "集合地點", icon: "📍", label: MEETING_DISPLAY.label, navName: MEETING_DISPLAY.navName, desc: MEETING_DISPLAY.mapDesc },
   { type: "出發", icon: "🏍️", label: "台3線出發", navName: "台3線 高雄旗山", stopId: 0 },
   { type: "餐廳", icon: "🍜", label: "伯恭甕缸雞", navName: "伯恭甕缸雞 雲林古坑", stopId: 1 },
   { type: "景點", icon: "🌿", label: "古坑好農", navName: "古坑好農 雲林", stopId: 2 },
   { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 3 },
   { type: "景點", icon: "☕", label: "華山咖啡大街", navName: "華山咖啡大街 雲林古坑", stopId: 4 },
   { type: "景點", icon: "🏛️", label: "華山會館", navName: "華山會館 雲林古坑", stopId: 5 },
-  { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 6 },
+  { type: "住宿", icon: "🏠", label: "茗鎮民宿", navName: "茗鎮咖啡民宿 雲林華山", stopId: 6, departDisplay: true },
   { type: "景點", icon: "🎋", label: "五元兩角", navName: "五元兩角 雲林", stopId: 7 },
   { type: "景點", icon: "⛰️", label: "雲嶺之丘", navName: "雲嶺之丘 雲林古坑", stopId: 8 },
   { type: "餐廳", icon: "🍜", label: "山中美食館", navName: (function () {
@@ -557,32 +565,54 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
   const [saving, setSaving] = useState(false);
 
   if (day1Result) {
-    const star = FAMILY.find((p) => p.sheetId === day1Result.starPersonId);
+    const hasStarId = !!(day1Result.starPersonId && String(day1Result.starPersonId).trim());
+    const star = hasStarId ? FAMILY.find((p) => p.sheetId === day1Result.starPersonId) : null;
+    const actualKm = Number(day1Result.totalKm);
+    const actualMin = guessTimeToMinutes(day1Result.arrivalTime);
     const ranked = guesses.map((g) => {
-      const actualMin = guessTimeToMinutes(day1Result.arrivalTime);
-      const kmErr = Math.abs(g.guessKm - day1Result.totalKm);
+      const kmErr = Math.abs(Number(g.guessKm) - actualKm);
       const timeErr = Math.abs(guessTimeToMinutes(g.guessTime) - actualMin);
-      return { ...g, score: kmErr + timeErr / 10 };
+      return { ...g, kmErr: kmErr, timeErr: timeErr, score: kmErr + timeErr / 10 };
     }).sort((a, b) => a.score - b.score);
+    if (ranked.length === 0) {
+      return (
+        <Card style={{ background: "#FDF1D6", border: `2px solid ${COLORS.gold}` }}>
+          <SectionTitle style={{ color: COLORS.deepGreen, fontWeight: 800 }}>🏁 Day 1 挑戰完成！</SectionTitle>
+          <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.deepGreen, marginTop: 10, lineHeight: 1.6 }}>
+            🎯 實際里程 {isFinite(actualKm) ? actualKm.toFixed(1) : "—"} km
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.deepGreen, marginTop: 4, lineHeight: 1.6 }}>
+            🕒 實際抵達 {formatGuessTime(day1Result.arrivalTime) || "—"}
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink, marginTop: 14, lineHeight: 1.6 }}>
+            😆 今天沒有人猜！<br />⭐ 今日之星從缺
+          </div>
+        </Card>
+      );
+    }
     return (
       <Card style={{ background: "#FDF1D6", border: `2px solid ${COLORS.gold}` }}>
         <SectionTitle style={{ color: COLORS.deepGreen, fontWeight: 800 }}>⭐ 今日之星出爐！</SectionTitle>
-        <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 8 }}>{star ? star.name : "—"}</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 8 }}>{star ? star.name : "今日之星從缺"}</div>
         <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
-          實際總公里：<strong>{day1Result.totalKm.toFixed(1)} km</strong><br />
+          實際總公里：<strong>{isFinite(actualKm) ? actualKm.toFixed(1) : "—"} km</strong><br />
           抵達 {TRIP.day1AccommodationName}：<strong>{formatGuessTime(day1Result.arrivalTime)}</strong>
         </div>
-        {ranked.length > 0 && (
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #E8D5A0" }}>
-            <SectionTitle style={{ marginBottom: 8 }}>🏅 猜測排行榜</SectionTitle>
-            {ranked.map((g, i) => (
-              <div key={g.personId} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: COLORS.ink, padding: "5px 0", fontWeight: g.personId === day1Result.starPersonId ? 800 : 600 }}>
-                <span>{i + 1}. {g.personName}{g.personId === day1Result.starPersonId ? " ⭐" : ""}</span>
-                <span>{g.guessKm} km · {formatGuessTime(g.guessTime)}</span>
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #E8D5A0" }}>
+          <SectionTitle style={{ marginBottom: 8 }}>🏅 猜測排行榜</SectionTitle>
+          {ranked.map((g, i) => (
+            <div key={g.personId} style={{ padding: "10px 0", borderBottom: "1px solid #F3E6C4" }}>
+              <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: g.personId === day1Result.starPersonId ? 800 : 700 }}>
+                {i + 1}. {g.personName}{g.personId === day1Result.starPersonId ? " ⭐" : ""}
               </div>
-            ))}
-          </div>
-        )}
+              <div style={{ fontSize: 13, color: "#5C5340", marginTop: 4, lineHeight: 1.55 }}>
+                猜測：{Number(g.guessKm).toFixed(1)} km｜{formatGuessTime(g.guessTime)}<br />
+                里程差：{Number(g.kmErr).toFixed(1)} km　時間差：{Math.round(g.timeErr)} 分鐘<br />
+                綜合誤差：{Number(g.score).toFixed(1)}
+              </div>
+            </div>
+          ))}
+        </div>
       </Card>
     );
   }
@@ -794,8 +824,11 @@ function Day1StartPanel({ isAdmin, onSave, saving }) {
       {isAdmin ? (
         <>
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🛵 起始里程</div>
-          <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12345.6" value={odometer} onChange={(e) => setOdometer(e.target.value)} style={DAY1_FIELD_INPUT} />
-          <div style={{ fontSize: 13, color: "#8A7A5C", marginTop: 4, marginBottom: 12 }}>km</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12345.6" value={odometer} onChange={(e) => setOdometer(e.target.value)} style={{ ...DAY1_FIELD_INPUT, flex: 1 }} />
+            <span style={{ flexShrink: 0, fontSize: 16, fontWeight: 700, color: COLORS.ink }}>km</span>
+          </div>
+          <div style={{ height: 12 }} />
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🕘 出發時間</div>
           <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={DAY1_FIELD_INPUT} />
           <button
@@ -825,7 +858,7 @@ function Day1ArrivePanel({ isAdmin, day1Challenge, onFinalize, saving }) {
   const liveKm = start != null && parsedEnd != null && parsedEnd >= start ? Math.round((parsedEnd - start) * 10) / 10 : null;
   const canReveal = isAdmin && !saving && liveKm != null && timeOk;
 
-  if (confirming) {
+  if (confirming && isAdmin) {
     return (
       <div style={{ marginTop: 14, padding: "14px 14px 4px", borderRadius: 16, background: "#FFF8E4" }}>
         <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen }}>🏁 準備揭曉</div>
@@ -835,13 +868,23 @@ function Day1ArrivePanel({ isAdmin, day1Challenge, onFinalize, saving }) {
           <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.deepGreen }}>🎯 實際 {liveKm != null ? liveKm.toFixed(1) : "—"} km</div>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button onClick={() => setConfirming(false)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontWeight: 700, cursor: "pointer" }}>返回修改</button>
+          <button onClick={() => setConfirming(false)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>返回修改</button>
           <button
             disabled={saving}
             onClick={() => onFinalize({ endOdometer: parsedEnd, arrivalTime: normalizeHhmm(arrivalTime) })}
-            style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: COLORS.gold, color: "#4A3617", fontWeight: 800, cursor: saving ? "default" : "pointer" }}
+            style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: COLORS.gold, color: "#4A3617", fontWeight: 800, fontSize: 21, lineHeight: 1.2, cursor: saving ? "default" : "pointer" }}
           >{saving ? "揭曉中…" : "⭐ 確認揭曉"}</button>
         </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div style={{ marginTop: 14, padding: "16px 14px", borderRadius: 16, background: "#FFF8E4", textAlign: "center" }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1.4 }}>🏁 已抵達茗鎮！</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.deepGreen, marginTop: 10, lineHeight: 1.4 }}>⭐ 今日之星準備揭曉！</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "#8A7A5C", marginTop: 10, lineHeight: 1.5 }}>稍等一下～答案馬上公布 👀</div>
       </div>
     );
   }
@@ -850,30 +893,27 @@ function Day1ArrivePanel({ isAdmin, day1Challenge, onFinalize, saving }) {
     <div style={{ marginTop: 14, padding: "14px 14px 4px", borderRadius: 16, background: "#FFF8E4" }}>
       <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen }}>🏁 抵達茗鎮啦！</div>
       <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 4, marginBottom: 14 }}>看看今天到底騎了多遠 👀</div>
-      {isAdmin ? (
-        <>
-          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🛵 現在里程</div>
-          <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12476.8" value={endOdometer} onChange={(e) => setEndOdometer(e.target.value)} style={DAY1_FIELD_INPUT} />
-          <div style={{ fontSize: 13, color: "#8A7A5C", marginTop: 4, marginBottom: 12 }}>km</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🕒 抵達時間</div>
-          <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} style={DAY1_FIELD_INPUT} />
-          {liveKm != null ? (
-            <div style={{ marginTop: 14, fontSize: 18, fontWeight: 800, color: COLORS.deepGreen }}>🎯 今天騎了 {liveKm.toFixed(1)} km</div>
-          ) : parsedEnd != null && start != null && parsedEnd < start ? (
-            <div style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: COLORS.orange }}>到達里程不能小於起始里程</div>
-          ) : null}
-          <button
-            disabled={!canReveal}
-            onClick={() => setConfirming(true)}
-            style={{
-              width: "100%", marginTop: 16, marginBottom: 8, padding: "14px 0", borderRadius: 16, border: "none", fontSize: 17, fontWeight: 800, color: "#4A3617",
-              background: canReveal ? COLORS.gold : "#E8D9A8", cursor: canReveal ? "pointer" : "default",
-            }}
-          >⭐ 揭曉今日之星！</button>
-        </>
-      ) : (
-        <div style={{ fontSize: 15, color: "#8A7A5C", fontWeight: 600, lineHeight: 1.5, paddingBottom: 8 }}>等待管理者輸入到達里程與抵達時間</div>
-      )}
+      <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🛵 現在里程</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12476.8" value={endOdometer} onChange={(e) => setEndOdometer(e.target.value)} style={{ ...DAY1_FIELD_INPUT, flex: 1 }} />
+        <span style={{ flexShrink: 0, fontSize: 16, fontWeight: 700, color: COLORS.ink }}>km</span>
+      </div>
+      <div style={{ height: 12 }} />
+      <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🕒 抵達時間</div>
+      <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} style={DAY1_FIELD_INPUT} />
+      {liveKm != null ? (
+        <div style={{ marginTop: 14, fontSize: 18, fontWeight: 800, color: COLORS.deepGreen }}>🎯 今天騎了 {liveKm.toFixed(1)} km</div>
+      ) : parsedEnd != null && start != null && parsedEnd < start ? (
+        <div style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: COLORS.orange }}>到達里程不能小於起始里程</div>
+      ) : null}
+      <button
+        disabled={!canReveal}
+        onClick={() => setConfirming(true)}
+        style={{
+          width: "100%", marginTop: 16, marginBottom: 8, padding: "14px 0", borderRadius: 16, border: "none", fontSize: 17, fontWeight: 800, color: "#4A3617",
+          background: canReveal ? COLORS.gold : "#E8D9A8", cursor: canReveal ? "pointer" : "default",
+        }}
+      >⭐ 揭曉今日之星！</button>
     </div>
   );
 }
@@ -886,7 +926,7 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
   const finalized = !!(day1Result || challenge.finalized);
   const waitingAtInn = progress.currentStop === DAY1_ACCOMMODATION_STOP_ID && !finalized;
   const showStartForm = allHere && progress.currentStop === -1;
-  const showChallengeBanner = progress.currentStop >= 0 && challenge.startOdometer != null;
+  const showChallengeBanner = progress.currentStop >= 0 && challenge.startOdometer != null && !(waitingAtInn && !isAdmin);
 
   return (
     <Card>
@@ -903,6 +943,15 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
           <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
             起始里程：<strong>{formatOdometer(challenge.startOdometer)}</strong> km<br />
             出發時間：<strong>{normalizeHhmm(challenge.startTime) || formatGuessTime(challenge.startTime)}</strong>
+          </div>
+        </div>
+      )}
+      {finalized && day1Result && (
+        <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 14, background: "#FDF1D6" }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.deepGreen }}>🏁 Day 1 挑戰完成！</div>
+          <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
+            🎯 實際 {Number(day1Result.totalKm).toFixed(1)} km　🕒 {formatGuessTime(day1Result.arrivalTime)}
+            {day1Result.starPersonId && String(day1Result.starPersonId).trim() ? "" : "　⭐ 今日之星從缺"}
           </div>
         </div>
       )}
@@ -931,7 +980,8 @@ function NextUpCard({ progress }) {
       <div style={{ marginTop: 8 }}>
         {next ? (
           <>
-            <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen }}>{next.time}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#B0A480", letterSpacing: 0.3 }}>預定</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1.2 }}>{next.time}</div>
             <div style={{ fontSize: 16, color: COLORS.ink, marginTop: 4, fontWeight: 600 }}>📍 {next.name}{next.note ? <span style={{ fontSize: 13, color: "#9A8E6E" }}>（{next.note}）</span> : null}</div>
             {next.address ? (
               <div style={{ fontSize: 13, color: "#9A8E6E", fontWeight: 600, marginTop: 4, lineHeight: 1.4 }}>{next.address}</div>
@@ -965,7 +1015,10 @@ function ProgressTimeline({ progress }) {
         return (
           <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F0EAD8" }}>
             <div>{done ? "🟢" : "⚪"}</div>
-            <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, width: 66 }}>{s.time}</div>
+            <div style={{ flexShrink: 0, width: 72, lineHeight: 1.25 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#B0A480", letterSpacing: 0.3 }}>預定</div>
+              <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600 }}>{s.time}</div>
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: isCurrent ? 800 : 600, color: done ? COLORS.deepGreen : COLORS.ink }}>{s.name}</div>
               {s.address ? (
@@ -1469,15 +1522,14 @@ function MapTab({ progress }) {
         <HandDrawnRouteMap />
       </Card>
       {MAP_DESTINATIONS.map((loc, i) => {
-        const desc = loc.desc || (loc.stopId != null ? mapStopDesc(loc.stopId) : "");
+        const desc = mapCardTimeText(loc);
         const navUrl = loc.noNav ? null : googleMapsNavUrl({ lat: loc.lat, lng: loc.lng, name: loc.navName || loc.label });
-        const meetingCard = !!loc.meetingCard;
         return (
           <Card key={loc.label + i} style={{ padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              {meetingCard ? null : <div style={{ fontSize: 22, lineHeight: 1.2 }}>{loc.icon}</div>}
+              <div style={{ fontSize: 22, lineHeight: 1.2, flexShrink: 0 }}>{loc.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <SectionTitle>{meetingCard ? "📍 集合地點" : loc.type}</SectionTitle>
+                <SectionTitle>{loc.type}</SectionTitle>
                 <div style={MAP_PLACE_NAME_STYLE}>{loc.label}</div>
                 {desc ? <div style={MAP_DAY_TIME_STYLE}>{desc}</div> : null}
                 {navUrl ? (
@@ -1758,8 +1810,17 @@ function ReviewTab({ people, trip, progress, segments, photos, day1Result, guess
 
       {day1Result && (
         <Card style={{ background: "#FDF1D6" }}>
-          <SectionTitle>⭐ 今日之星</SectionTitle>
-          <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>{star ? star.name : "—"}</div>
+          {day1Result.starPersonId && star ? (
+            <>
+              <SectionTitle>⭐ 今日之星</SectionTitle>
+              <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>{star.name}</div>
+            </>
+          ) : (
+            <>
+              <SectionTitle>🏁 Day 1 挑戰完成</SectionTitle>
+              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink, marginTop: 6 }}>😆 今天沒有人猜！⭐ 今日之星從缺</div>
+            </>
+          )}
           <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6 }}>
             Day 1 實際 {day1Result.totalKm.toFixed(1)} km · 抵達 {formatGuessTime(day1Result.arrivalTime)}
           </div>
@@ -1843,13 +1904,8 @@ function InSiteToast({ toast, fading }) {
 function JourneyHome(props) {
   const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, focusFamilySay, ...rest } = props;
   const next = STOPS[rest.progress.currentStop + 1];
-  const nextIndex = rest.progress.currentStop + 1;
   const requestAdvance = () => {
-    if (isDay1ProgressStop(nextIndex)) {
-      handleConfirmAdvance(null);
-      return;
-    }
-    setPendingAdvance(true);
+    handleConfirmAdvance(null);
   };
   return (
     <div style={{ paddingBottom: 96 }}>
@@ -2069,9 +2125,12 @@ function App() {
     try {
       await postToSheet({ action: "finalizeDay1Challenge", endOdometer: endOdometer, arrivalTime: arrivalTime, recordedBy: me.sheetId });
       setSyncState("ok");
-      fetchAll();
-    } catch (e) { setSyncState("error"); }
-    setSavingDay1(false);
+      await fetchAll();
+    } catch (e) {
+      setSyncState("error");
+    } finally {
+      setSavingDay1(false);
+    }
   };
 
   const shellStyle = { maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream, fontFamily: '"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', position: "relative" };
