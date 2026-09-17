@@ -100,6 +100,7 @@ async function fetchSheetData() {
     tasks: data.tasks || DEFAULT_TRIP.tasks,
     announcements: Array.isArray(data.announcements) ? data.announcements : [],
     day1Result: data.day1Result || null,
+    day1Challenge: data.day1Challenge || { startOdometer: null, startTime: "", endOdometer: null, arrivalTime: "", finalized: false },
     guessLocked: !!data.guessLocked,
     messages: Array.isArray(data.messages) ? data.messages : [],
     messageAcks: Array.isArray(data.messageAcks) ? data.messageAcks : [],
@@ -186,6 +187,47 @@ function guessTimeToMinutes(value) {
   const parts = t.split(":");
   return Number(parts[0]) * 60 + Number(parts[1] || 0);
 }
+
+function isAdminPerson(person) {
+  return !!(person && typeof ADMIN_SHEET_IDS !== "undefined" && ADMIN_SHEET_IDS.indexOf(person.sheetId) >= 0);
+}
+
+function isValidHhmm(value) {
+  const str = String(value || "").trim();
+  const m = str.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return false;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  return h >= 0 && h <= 23 && min >= 0 && min <= 59;
+}
+
+function normalizeHhmm(value) {
+  if (!isValidHhmm(value)) return "";
+  const parts = String(value).trim().split(":");
+  return String(Number(parts[0])).padStart(2, "0") + ":" + String(Number(parts[1])).padStart(2, "0");
+}
+
+function parseOdometerInput(value) {
+  const n = parseFloat(value);
+  if (!isFinite(n) || n < 0) return null;
+  return Math.round(n * 10) / 10;
+}
+
+function formatOdometer(n) {
+  if (n == null || n === "" || !isFinite(Number(n))) return "—";
+  return Number(n).toFixed(1);
+}
+
+function isDay1ProgressStop(stopIndex) {
+  return stopIndex >= 1 && stopIndex <= DAY1_ACCOMMODATION_STOP_ID;
+}
+
+const EMPTY_DAY1_CHALLENGE = { startOdometer: null, startTime: "", endOdometer: null, arrivalTime: "", finalized: false };
+
+const DAY1_FIELD_INPUT = {
+  width: "100%", maxWidth: "100%", padding: "12px 14px", borderRadius: 12,
+  border: "1px solid #DCD3B8", fontSize: 18, boxSizing: "border-box", minWidth: 0,
+};
 
 function googleMapsNavUrl(loc) {
   if (loc.lat != null && loc.lng != null) {
@@ -517,7 +559,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
   if (day1Result) {
     const star = FAMILY.find((p) => p.sheetId === day1Result.starPersonId);
     const ranked = guesses.map((g) => {
-      const actualMin = new Date(day1Result.arrivalTime).getHours() * 60 + new Date(day1Result.arrivalTime).getMinutes();
+      const actualMin = guessTimeToMinutes(day1Result.arrivalTime);
       const kmErr = Math.abs(g.guessKm - day1Result.totalKm);
       const timeErr = Math.abs(guessTimeToMinutes(g.guessTime) - actualMin);
       return { ...g, score: kmErr + timeErr / 10 };
@@ -528,7 +570,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
         <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 8 }}>{star ? star.name : "—"}</div>
         <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
           實際總公里：<strong>{day1Result.totalKm.toFixed(1)} km</strong><br />
-          抵達 {TRIP.day1AccommodationName}：<strong>{formatTime(day1Result.arrivalTime)}</strong>
+          抵達 {TRIP.day1AccommodationName}：<strong>{formatGuessTime(day1Result.arrivalTime)}</strong>
         </div>
         {ranked.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #E8D5A0" }}>
@@ -738,12 +780,113 @@ function CheckinTab(props) {
   );
 }
 
-function JourneyStageCard({ progress, allHere, segments, onRequestAdvance }) {
+function Day1StartPanel({ isAdmin, onSave, saving }) {
+  const [odometer, setOdometer] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const parsed = parseOdometerInput(odometer);
+  const timeOk = isValidHhmm(startTime);
+  const canSubmit = isAdmin && !saving && parsed != null && timeOk;
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 17, marginBottom: 6 }}>🎉 全員到齊！</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen, textAlign: "center" }}>🚦 準備出發！</div>
+      <div style={{ fontSize: 14, color: "#8A7A5C", textAlign: "center", marginTop: 4, marginBottom: 14 }}>記下我們的起跑數字</div>
+      {isAdmin ? (
+        <>
+          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🛵 起始里程</div>
+          <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12345.6" value={odometer} onChange={(e) => setOdometer(e.target.value)} style={DAY1_FIELD_INPUT} />
+          <div style={{ fontSize: 13, color: "#8A7A5C", marginTop: 4, marginBottom: 12 }}>km</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🕘 出發時間</div>
+          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={DAY1_FIELD_INPUT} />
+          <button
+            disabled={!canSubmit}
+            onClick={() => onSave({ odometer: parsed, startTime: normalizeHhmm(startTime) })}
+            style={{
+              width: "100%", marginTop: 16, padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800, color: "white",
+              background: canSubmit ? `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})` : "#9CC0A8",
+              cursor: canSubmit ? "pointer" : "default",
+            }}
+          >{saving ? "送出中…" : "🏍️ 出發囉！"}</button>
+        </>
+      ) : (
+        <div style={{ textAlign: "center", fontSize: 15, color: "#8A7A5C", fontWeight: 600, lineHeight: 1.5 }}>等待管理者記下起始里程與出發時間</div>
+      )}
+    </div>
+  );
+}
+
+function Day1ArrivePanel({ isAdmin, day1Challenge, onFinalize, saving }) {
+  const [endOdometer, setEndOdometer] = useState("");
+  const [arrivalTime, setArrivalTime] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const start = day1Challenge && day1Challenge.startOdometer != null ? Number(day1Challenge.startOdometer) : null;
+  const parsedEnd = parseOdometerInput(endOdometer);
+  const timeOk = isValidHhmm(arrivalTime);
+  const liveKm = start != null && parsedEnd != null && parsedEnd >= start ? Math.round((parsedEnd - start) * 10) / 10 : null;
+  const canReveal = isAdmin && !saving && liveKm != null && timeOk;
+
+  if (confirming) {
+    return (
+      <div style={{ marginTop: 14, padding: "14px 14px 4px", borderRadius: 16, background: "#FFF8E4" }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen }}>🏁 準備揭曉</div>
+        <div style={{ marginTop: 12, fontSize: 15, color: COLORS.ink, lineHeight: 1.7 }}>
+          <div>起始　<strong>{formatOdometer(start)}</strong> km　{normalizeHhmm(day1Challenge.startTime) || "—"}</div>
+          <div>到達　<strong>{formatOdometer(parsedEnd)}</strong> km　{normalizeHhmm(arrivalTime) || "—"}</div>
+          <div style={{ marginTop: 8, fontSize: 18, fontWeight: 800, color: COLORS.deepGreen }}>🎯 實際 {liveKm != null ? liveKm.toFixed(1) : "—"} km</div>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+          <button onClick={() => setConfirming(false)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid #DCD3B8", background: "white", fontWeight: 700, cursor: "pointer" }}>返回修改</button>
+          <button
+            disabled={saving}
+            onClick={() => onFinalize({ endOdometer: parsedEnd, arrivalTime: normalizeHhmm(arrivalTime) })}
+            style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: COLORS.gold, color: "#4A3617", fontWeight: 800, cursor: saving ? "default" : "pointer" }}
+          >{saving ? "揭曉中…" : "⭐ 確認揭曉"}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 14, padding: "14px 14px 4px", borderRadius: 16, background: "#FFF8E4" }}>
+      <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen }}>🏁 抵達茗鎮啦！</div>
+      <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 4, marginBottom: 14 }}>看看今天到底騎了多遠 👀</div>
+      {isAdmin ? (
+        <>
+          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🛵 現在里程</div>
+          <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12476.8" value={endOdometer} onChange={(e) => setEndOdometer(e.target.value)} style={DAY1_FIELD_INPUT} />
+          <div style={{ fontSize: 13, color: "#8A7A5C", marginTop: 4, marginBottom: 12 }}>km</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🕒 抵達時間</div>
+          <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} style={DAY1_FIELD_INPUT} />
+          {liveKm != null ? (
+            <div style={{ marginTop: 14, fontSize: 18, fontWeight: 800, color: COLORS.deepGreen }}>🎯 今天騎了 {liveKm.toFixed(1)} km</div>
+          ) : parsedEnd != null && start != null && parsedEnd < start ? (
+            <div style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: COLORS.orange }}>到達里程不能小於起始里程</div>
+          ) : null}
+          <button
+            disabled={!canReveal}
+            onClick={() => setConfirming(true)}
+            style={{
+              width: "100%", marginTop: 16, marginBottom: 8, padding: "14px 0", borderRadius: 16, border: "none", fontSize: 17, fontWeight: 800, color: "#4A3617",
+              background: canReveal ? COLORS.gold : "#E8D9A8", cursor: canReveal ? "pointer" : "default",
+            }}
+          >⭐ 揭曉今日之星！</button>
+        </>
+      ) : (
+        <div style={{ fontSize: 15, color: "#8A7A5C", fontWeight: 600, lineHeight: 1.5, paddingBottom: 8 }}>等待管理者輸入到達里程與抵達時間</div>
+      )}
+    </div>
+  );
+}
+
+function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Result, isAdmin, onRequestAdvance, onSaveDay1Start, onFinalizeDay1, savingDay1 }) {
   const current = progress.currentStop >= 0 ? STOPS[progress.currentStop] : null;
   const next = STOPS[progress.currentStop + 1];
   const finished = progress.currentStop === STOPS.length - 1;
-  const day1Km = sumDay1Km(segments);
-  const showDay1Km = progress.currentStop >= 0 && progress.currentStop <= DAY1_ACCOMMODATION_STOP_ID;
+  const challenge = day1Challenge || EMPTY_DAY1_CHALLENGE;
+  const finalized = !!(day1Result || challenge.finalized);
+  const waitingAtInn = progress.currentStop === DAY1_ACCOMMODATION_STOP_ID && !finalized;
+  const showStartForm = allHere && progress.currentStop === -1;
+  const showChallengeBanner = progress.currentStop >= 0 && challenge.startOdometer != null;
 
   return (
     <Card>
@@ -754,9 +897,13 @@ function JourneyStageCard({ progress, allHere, segments, onRequestAdvance }) {
       {current && current.address ? (
         <div style={{ fontSize: 13, color: "#9A8E6E", fontWeight: 600, marginTop: 4, lineHeight: 1.4 }}>{current.address}</div>
       ) : null}
-      {showDay1Km && (
-        <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: COLORS.cream, fontSize: 15, fontWeight: 700, color: COLORS.deepGreen }}>
-          🛣️ Day 1 目前累積：{day1Km.toFixed(1)} 公里
+      {showChallengeBanner && (
+        <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 14, background: "#E4F1E1" }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.deepGreen }}>🟢 挑戰開始！</div>
+          <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
+            起始里程：<strong>{formatOdometer(challenge.startOdometer)}</strong> km<br />
+            出發時間：<strong>{normalizeHhmm(challenge.startTime) || formatGuessTime(challenge.startTime)}</strong>
+          </div>
         </div>
       )}
       {segments.length > 0 && progress.currentStop > DAY1_ACCOMMODATION_STOP_ID && (
@@ -764,16 +911,9 @@ function JourneyStageCard({ progress, allHere, segments, onRequestAdvance }) {
           🛣️ 全程累積：{sumAllKm(segments).toFixed(1)} 公里
         </div>
       )}
-      {allHere && progress.currentStop === -1 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 17, marginBottom: 10 }}>🎉 全員到齊！</div>
-          <button onClick={() => onRequestAdvance()} style={{
-            width: "100%", padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800, color: "white",
-            background: `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})`, cursor: "pointer",
-          }}>🏍️ 出發囉！</button>
-        </div>
-      )}
-      {progress.currentStop >= 0 && next && (
+      {showStartForm && <Day1StartPanel isAdmin={isAdmin} onSave={onSaveDay1Start} saving={savingDay1} />}
+      {waitingAtInn && <Day1ArrivePanel isAdmin={isAdmin} day1Challenge={challenge} onFinalize={onFinalizeDay1} saving={savingDay1} />}
+      {progress.currentStop >= 0 && next && !waitingAtInn && (
         <button onClick={() => onRequestAdvance()} style={{
           width: "100%", marginTop: 14, padding: "12px 0", borderRadius: 14, cursor: "pointer",
           border: `1px solid ${COLORS.plantGreen}`, background: "white", color: COLORS.plantGreen, fontWeight: 700, fontSize: 15,
@@ -1621,7 +1761,7 @@ function ReviewTab({ people, trip, progress, segments, photos, day1Result, guess
           <SectionTitle>⭐ 今日之星</SectionTitle>
           <div style={{ fontSize: 24, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>{star ? star.name : "—"}</div>
           <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6 }}>
-            Day 1 實際 {day1Result.totalKm.toFixed(1)} km · 抵達 {formatTime(day1Result.arrivalTime)}
+            Day 1 實際 {day1Result.totalKm.toFixed(1)} km · 抵達 {formatGuessTime(day1Result.arrivalTime)}
           </div>
         </Card>
       )}
@@ -1703,6 +1843,14 @@ function InSiteToast({ toast, fading }) {
 function JourneyHome(props) {
   const { pendingAdvance, setPendingAdvance, handleConfirmAdvance, focusFamilySay, ...rest } = props;
   const next = STOPS[rest.progress.currentStop + 1];
+  const nextIndex = rest.progress.currentStop + 1;
+  const requestAdvance = () => {
+    if (isDay1ProgressStop(nextIndex)) {
+      handleConfirmAdvance(null);
+      return;
+    }
+    setPendingAdvance(true);
+  };
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner />
@@ -1715,7 +1863,18 @@ function JourneyHome(props) {
         focusOnMount={focusFamilySay}
         pushStats={rest.pushStats}
       />
-      <JourneyStageCard progress={rest.progress} allHere={rest.checkedCount === 9} segments={rest.segments} onRequestAdvance={() => setPendingAdvance(true)} />
+      <JourneyStageCard
+        progress={rest.progress}
+        allHere={rest.checkedCount === 9}
+        segments={rest.segments}
+        day1Challenge={rest.day1Challenge}
+        day1Result={rest.day1Result}
+        isAdmin={rest.isAdmin}
+        savingDay1={rest.savingDay1}
+        onRequestAdvance={requestAdvance}
+        onSaveDay1Start={rest.onSaveDay1Start}
+        onFinalizeDay1={rest.onFinalizeDay1}
+      />
       <NextUpCard progress={rest.progress} />
       <ProgressTimeline progress={rest.progress} />
       <WeatherCard /><SafetyCard />
@@ -1725,7 +1884,7 @@ function JourneyHome(props) {
       </div>
       {pendingAdvance && (
         <KmInputModal
-          nextStopName={rest.progress.currentStop === -1 ? STOPS[0].name : (next ? next.name : "")}
+          nextStopName={next ? next.name : ""}
           onCancel={() => setPendingAdvance(false)}
           onConfirm={(km) => { setPendingAdvance(false); handleConfirmAdvance(km); }}
         />
@@ -1762,9 +1921,11 @@ function App() {
   const [toastFading, setToastFading] = useState(false);
   const [pushStats, setPushStats] = useState({ activeSubscriptionCount: 0 });
   const [day1Result, setDay1Result] = useState(null);
+  const [day1Challenge, setDay1Challenge] = useState(EMPTY_DAY1_CHALLENGE);
   const [guessLocked, setGuessLocked] = useState(false);
   const [syncState, setSyncState] = useState("loading");
   const [pendingAdvance, setPendingAdvance] = useState(false);
+  const [savingDay1, setSavingDay1] = useState(false);
   const [focusFamilySay, setFocusFamilySay] = useState(false);
   const pollRef = useRef(null);
   const prevMsgIdsRef = useRef(null);
@@ -1792,6 +1953,7 @@ function App() {
       setMessageAcks(data.messageAcks);
       setPushStats(data.pushStats || { activeSubscriptionCount: 0 });
       setDay1Result(data.day1Result);
+      setDay1Challenge(data.day1Challenge || EMPTY_DAY1_CHALLENGE);
       setGuessLocked(data.guessLocked);
       setTrip({ ...DEFAULT_TRIP, tasks: data.tasks, announcements: data.announcements });
       setLoaded(true);
@@ -1881,10 +2043,35 @@ function App() {
     const nextIndex = Math.min(progress.currentStop + 1, STOPS.length - 1);
     setProgress({ currentStop: nextIndex });
     try {
-      await postToSheet({ action: "setStop", stopIndex: nextIndex, segmentKm: km, recordedBy: me?.sheetId || "" });
+      const body = { action: "setStop", stopIndex: nextIndex, recordedBy: me?.sheetId || "" };
+      if (km !== null && km !== undefined && km !== "") body.segmentKm = km;
+      await postToSheet(body);
       setSyncState("ok");
       fetchAll();
     } catch (e) { setSyncState("error"); }
+  };
+
+  const handleSaveDay1Start = async ({ odometer, startTime }) => {
+    if (!isAdminPerson(me)) return;
+    setSavingDay1(true);
+    try {
+      await postToSheet({ action: "saveDay1Start", odometer: odometer, startTime: startTime, recordedBy: me.sheetId });
+      setProgress({ currentStop: 0 });
+      setSyncState("ok");
+      fetchAll();
+    } catch (e) { setSyncState("error"); }
+    setSavingDay1(false);
+  };
+
+  const handleFinalizeDay1 = async ({ endOdometer, arrivalTime }) => {
+    if (!isAdminPerson(me)) return;
+    setSavingDay1(true);
+    try {
+      await postToSheet({ action: "finalizeDay1Challenge", endOdometer: endOdometer, arrivalTime: arrivalTime, recordedBy: me.sheetId });
+      setSyncState("ok");
+      fetchAll();
+    } catch (e) { setSyncState("error"); }
+    setSavingDay1(false);
   };
 
   const shellStyle = { maxWidth: 420, margin: "0 auto", minHeight: "100vh", background: COLORS.cream, fontFamily: '"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif', position: "relative" };
@@ -1904,6 +2091,8 @@ function App() {
         onResetCheckinHome={async () => { await postToSheet({ action: "resetAllHome" }); fetchAll(); }} />}
       {tab === "journey" && <JourneyHome progress={progress} checkedCount={checkedCount} segments={segments} trip={trip} messages={messages} messageAcks={messageAcks} pushStats={pushStats} myId={myId}
         pendingAdvance={pendingAdvance} setPendingAdvance={setPendingAdvance} handleConfirmAdvance={handleConfirmAdvance}
+        day1Challenge={day1Challenge} day1Result={day1Result} isAdmin={isAdminPerson(me)} savingDay1={savingDay1}
+        onSaveDay1Start={handleSaveDay1Start} onFinalizeDay1={handleFinalizeDay1}
         focusFamilySay={focusFamilySay} onSent={fetchAll} />}
       {tab === "map" && <MapTab progress={progress} />}
       {tab === "quest" && <TaskTab trip={trip} progress={progress} checkedCount={checkedCount} photos={photos} myId={myId}
