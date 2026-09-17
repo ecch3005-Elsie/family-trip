@@ -671,6 +671,50 @@ function CheckinBlock({ icon, title, gaugeLabel, people, doneField, myId, button
   );
 }
 
+function TravelMemoCard() {
+  const breakfast = [
+    { name: "大哥", item: "燻雞蛋三明治＋紅茶" },
+    { name: "清文", item: "豬排漢堡" },
+    { name: "紅艷", item: "麥香雞漢堡" },
+    { name: "哈哈", item: "起司燻牛肉蛋" },
+    { name: "肉粽", item: "燻雞蛋三明治＋紅茶" },
+    { name: "亦庭", item: "鮪魚蛋三明治＋紅茶鮮奶" },
+    { name: "亦呈", item: "肉鬆蛋三明治＋咖啡牛奶" },
+    { name: "阿勳", item: "鮪魚蛋三明治＋咖啡牛奶" },
+    { name: "阿享", item: "肉鬆蛋三明治＋咖啡牛奶" },
+  ];
+  const reservations = [
+    { day: "Day 1", time: "18:00", place: "華山會館" },
+    { day: "Day 2", time: "12:30", place: "山中美食館" },
+    { day: "Day 2", time: "17:30", place: "東悅坊" },
+  ];
+  return (
+    <Card style={{ background: "#FFF8E4", boxShadow: "0 4px 14px rgba(31,74,61,0.08)" }}>
+      <SectionTitle style={{ fontSize: 17, color: COLORS.deepGreen, fontWeight: 800, marginBottom: 12 }}>📝 旅行小 Memo</SectionTitle>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>🥪 旗山早餐｜9 人</div>
+      <div>
+        {breakfast.map((row) => (
+          <div key={row.name} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "5px 0", minWidth: 0 }}>
+            <div style={{ flexShrink: 0, width: "2.6em", fontSize: 15, fontWeight: 700, color: COLORS.ink, lineHeight: 1.45 }}>{row.name}</div>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 400, color: COLORS.ink, lineHeight: 1.45, overflowWrap: "break-word", wordBreak: "break-word" }}>{row.item}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ height: 1, background: "rgba(138,122,92,0.18)", margin: "12px 0 14px" }} />
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#8A7A5C", marginBottom: 8 }}>🍽️ 餐廳訂位</div>
+      <div>
+        {reservations.map((row, i) => (
+          <div key={row.day + row.time + i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "6px 0", minWidth: 0 }}>
+            <div style={{ flexShrink: 0, width: "3.2em", fontSize: 14, fontWeight: 700, color: row.day === "Day 1" ? "#C4843A" : COLORS.plantGreen }}>{row.day}</div>
+            <div style={{ flexShrink: 0, width: "3.4em", fontSize: 17, fontWeight: 800, color: COLORS.deepGreen, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3 }}>{row.time}</div>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, color: COLORS.ink, overflowWrap: "break-word" }}>{row.place}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function CheckinTab(props) {
   const { people, myId, loaded, syncState, guesses, guessLocked, checkedCount, day1Result, ...handlers } = props;
   return (
@@ -689,6 +733,7 @@ function CheckinTab(props) {
             resetLabel="重置全部到家狀態" syncState={syncState} onCheckIn={handlers.onCheckInHome} onReset={handlers.onResetCheckinHome} />
         </>
       )}
+      <TravelMemoCard />
     </div>
   );
 }
