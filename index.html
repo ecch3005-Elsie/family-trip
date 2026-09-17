@@ -952,9 +952,12 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
   const day1Complete = progress.currentStop === DAY1_LAST_ID;
   const isDay1Journey = dayOf(progress.currentStop) === 1;
   const showStartForm = allHere && progress.currentStop === -1;
-  const showChallengeBanner = isDay1Journey && progress.currentStop >= 0 && challenge.startOdometer != null && !(waitingAtInn && !isAdmin);
+  const showChallengeBanner = isDay1Journey && progress.currentStop >= 0 && challenge.startOdometer != null && !(waitingAtInn && !isAdmin) && !(day1Complete && finalized);
   const showDay1Result = isDay1Journey && finalized && day1Result;
   const day2Start = stopById(DAY2_START_ID);
+  const day1Star = showDay1Result && day1Result.starPersonId && String(day1Result.starPersonId).trim()
+    ? FAMILY.find((p) => p.sheetId === day1Result.starPersonId)
+    : null;
 
   return (
     <Card>
@@ -977,9 +980,10 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
       {showDay1Result && (
         <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 14, background: "#FDF1D6" }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.deepGreen }}>🏁 Day 1 挑戰完成！</div>
-          <div style={{ fontSize: 15, color: COLORS.ink, marginTop: 6, lineHeight: 1.6 }}>
-            🎯 實際 {Number(day1Result.totalKm).toFixed(1)} km　🕒 {formatGuessTime(day1Result.arrivalTime)}
-            {day1Result.starPersonId && String(day1Result.starPersonId).trim() ? "" : "　⭐ 今日之星從缺"}
+          <div style={{ marginTop: 6, fontSize: 15, fontWeight: 700, color: COLORS.ink, lineHeight: 1.5, display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
+            <span>🎯 {isFinite(Number(day1Result.totalKm)) ? Number(day1Result.totalKm).toFixed(1) : "—"} km</span>
+            <span>🕘 {formatGuessTime(day1Result.arrivalTime) || "—"}</span>
+            <span>⭐ {day1Star ? day1Star.name : "從缺"}</span>
           </div>
         </div>
       )}
@@ -2182,7 +2186,7 @@ function App() {
     if (progress.currentStop !== DAY1_LAST_ID) return;
     setProgress({ currentStop: DAY2_START_ID });
     try {
-      await postToSheet({ action: "setStop", stopIndex: DAY2_START_ID, recordedBy: me?.sheetId || "" });
+      await postToSheet({ action: "setStop", stopIndex: DAY2_START_ID, recordedBy: me?.sheetId || "", startDay2: true });
       setSyncState("ok");
       fetchAll();
     } catch (e) { setSyncState("error"); }
