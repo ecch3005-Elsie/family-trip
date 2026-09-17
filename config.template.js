@@ -24,6 +24,8 @@ const FAMILY = [
   { id: 9, name: "呈", initial: "呈", sheetId: "cheng" },
 ];
 
+const ADMIN_SHEET_IDS = ["walter", "xiang"];
+
 const TASK_DEFS = [
   { key: "photo", label: "家族合照", icon: "📸", doneLabel: "家族合照完成", cta: "📸 我們拍好了！" },
   { key: "food", label: "今日美食", icon: "🍜", doneLabel: "今日美食完成", cta: "🍜 吃飽啦！" },
