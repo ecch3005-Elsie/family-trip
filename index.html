@@ -2215,7 +2215,8 @@ function App() {
       const body = { action: "setStop", stopIndex: nextIndex, recordedBy: me?.sheetId || "" };
       if (km !== null && km !== undefined && km !== "") body.segmentKm = km;
       await postToSheet(body);
-      await fetchAll({ forceProgress: true });
+      // setStop 已成功就先更新畫面；不要 await fetchAll，以免 GET 卡住時按鈕永久停在「更新中…」
+      setProgress({ currentStop: nextIndex });
       setSyncState("ok");
     } catch (e) {
       setSyncState("error");
@@ -2224,6 +2225,7 @@ function App() {
       advanceInFlightRef.current = false;
       setSavingAdvance(false);
     }
+    fetchAll({ forceProgress: true });
   };
 
   const handleStartDay2 = async () => {
@@ -2235,7 +2237,7 @@ function App() {
     setAdvanceError("");
     try {
       await postToSheet({ action: "setStop", stopIndex: DAY2_START_ID, recordedBy: me?.sheetId || "", startDay2: true });
-      await fetchAll({ forceProgress: true });
+      setProgress({ currentStop: DAY2_START_ID });
       setSyncState("ok");
     } catch (e) {
       setSyncState("error");
@@ -2244,6 +2246,7 @@ function App() {
       advanceInFlightRef.current = false;
       setSavingAdvance(false);
     }
+    fetchAll({ forceProgress: true });
   };
 
   const handleSaveDay1Start = async ({ odometer, startTime }) => {
