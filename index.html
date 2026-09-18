@@ -2210,9 +2210,18 @@ function App() {
 
   useEffect(() => {
     if (myId === null) return;
-    fetchAll();
-    pollRef.current = setInterval(fetchAll, POLL_MS);
-    return () => clearInterval(pollRef.current);
+    let cancelled = false;
+    fetchAll().finally(function () {
+      if (cancelled) return;
+      pollRef.current = setInterval(fetchAll, POLL_MS);
+    });
+    return () => {
+      cancelled = true;
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
   }, [myId]);
 
   useEffect(() => {
