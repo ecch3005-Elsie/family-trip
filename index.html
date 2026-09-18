@@ -581,6 +581,26 @@ function Avatar({ person }) {
   );
 }
 
+function GuessGameRules() {
+  const step = { fontSize: 14, fontWeight: 800, color: COLORS.deepGreen, marginTop: 10, lineHeight: 1.4 };
+  const line = { fontSize: 13, color: COLORS.ink, marginTop: 3, lineHeight: 1.55 };
+  return (
+    <div data-guess-rules="1" style={{ marginTop: 10, padding: "10px 12px 12px", borderRadius: 14, background: "#FFF8E4" }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.deepGreen, lineHeight: 1.4 }}>🎯 到茗鎮，我們騎了多遠？</div>
+      <div style={line}>出發前先猜猜 到茗鎮時，騎了幾公里＋幾點抵達 👀</div>
+      <div style={step}>🏍️ 出發囉！</div>
+      <div style={line}><strong>Walter／阿享</strong>在「<strong>旅程</strong>」輸入 起始里程＋出發時間</div>
+      <div style={step}>🎯 怎麼比？</div>
+      <div style={line}>📏 里程每差 <strong>1 km＝1 分</strong></div>
+      <div style={line}>⏰ 時間每差 <strong>10 分鐘＝1 分</strong></div>
+      <div style={{ ...line, color: COLORS.plantGreen }}>⭐ <strong>分數越低</strong>，猜得越準！</div>
+      <div style={step}>📍 到茗鎮，答案揭曉！</div>
+      <div style={line}><strong>Walter／阿享</strong>在「<strong>旅程</strong>」輸入 抵達里程＋抵達時間</div>
+      <div style={line}>系統自動算排名 → 今日之星出爐！⭐</div>
+    </div>
+  );
+}
+
 function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, onSaved }) {
   const me = FAMILY.find((p) => p.id === myId);
   const myGuess = guesses.find((g) => g.personId === me?.sheetId);
@@ -675,10 +695,7 @@ function GuessSection({ myId, guesses, guessLocked, checkedCount, day1Result, on
   return (
     <Card>
       <SectionTitle>🎲 出發前猜謎（Day 1）</SectionTitle>
-      <div style={{ fontSize: 14, color: "#8A7A5C", marginTop: 6, lineHeight: 1.5 }}>
-        猜今日總公里數 & 抵達 {TRIP.day1AccommodationName} 時間<br />
-        最準的人拿「今日之星 ⭐」
-      </div>
+      <GuessGameRules />
       <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, color: "#8A7A5C", marginBottom: 4 }}>總公里（km）</div>
