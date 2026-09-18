@@ -867,33 +867,53 @@ function Day1StartPanel({ isAdmin, onSave, saving }) {
   const parsed = parseOdometerInput(odometer);
   const timeOk = isValidHhmm(startTime);
   const canSubmit = isAdmin && !saving && parsed != null && timeOk;
+  const lockedField = {
+    background: "#F3E9D2",
+    color: "#9A8E6E",
+    cursor: "default",
+  };
   return (
     <div style={{ marginTop: 14 }}>
-      <div style={{ textAlign: "center", color: COLORS.orange, fontWeight: 800, fontSize: 17, marginBottom: 6 }}>🎉 全員到齊！</div>
       <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.deepGreen, textAlign: "center" }}>🚦 準備出發！</div>
       <div style={{ fontSize: 14, color: "#8A7A5C", textAlign: "center", marginTop: 4, marginBottom: 14 }}>記下我們的起跑數字</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🛵 起始里程</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          min="0"
+          placeholder={isAdmin ? "例如 12345.6" : ""}
+          value={odometer}
+          readOnly={!isAdmin}
+          disabled={!isAdmin}
+          onChange={(e) => { if (isAdmin) setOdometer(e.target.value); }}
+          style={{ ...DAY1_FIELD_INPUT, flex: 1, ...(isAdmin ? {} : lockedField) }}
+        />
+        <span style={{ flexShrink: 0, fontSize: 16, fontWeight: 700, color: COLORS.ink }}>km</span>
+      </div>
+      <div style={{ height: 12 }} />
+      <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🕘 出發時間</div>
+      <input
+        type="time"
+        value={startTime}
+        readOnly={!isAdmin}
+        disabled={!isAdmin}
+        onChange={(e) => { if (isAdmin) setStartTime(e.target.value); }}
+        style={{ ...DAY1_FIELD_INPUT, ...(isAdmin ? {} : lockedField) }}
+      />
       {isAdmin ? (
-        <>
-          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🛵 起始里程</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="例如 12345.6" value={odometer} onChange={(e) => setOdometer(e.target.value)} style={{ ...DAY1_FIELD_INPUT, flex: 1 }} />
-            <span style={{ flexShrink: 0, fontSize: 16, fontWeight: 700, color: COLORS.ink }}>km</span>
-          </div>
-          <div style={{ height: 12 }} />
-          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepGreen, marginBottom: 6 }}>🕘 出發時間</div>
-          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={DAY1_FIELD_INPUT} />
-          <button
-            disabled={!canSubmit}
-            onClick={() => onSave({ odometer: parsed, startTime: normalizeHhmm(startTime) })}
-            style={{
-              width: "100%", marginTop: 16, padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800, color: "white",
-              background: canSubmit ? `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})` : "#9CC0A8",
-              cursor: canSubmit ? "pointer" : "default",
-            }}
-          >{saving ? "送出中…" : "🏍️ 出發囉！"}</button>
-        </>
+        <button
+          disabled={!canSubmit}
+          onClick={() => onSave({ odometer: parsed, startTime: normalizeHhmm(startTime) })}
+          style={{
+            width: "100%", marginTop: 16, padding: "14px 0", borderRadius: 16, border: "none", fontSize: 19, fontWeight: 800, color: "white",
+            background: canSubmit ? `linear-gradient(135deg, ${COLORS.plantGreen}, ${COLORS.deepGreen})` : "#9CC0A8",
+            cursor: canSubmit ? "pointer" : "default",
+          }}
+        >{saving ? "送出中…" : "🏍️ 出發囉！"}</button>
       ) : (
-        <div style={{ textAlign: "center", fontSize: 15, color: "#8A7A5C", fontWeight: 600, lineHeight: 1.5 }}>等待管理者記下起始里程與出發時間</div>
+        <div style={{ textAlign: "center", fontSize: 15, color: "#8A7A5C", fontWeight: 600, lineHeight: 1.5, marginTop: 16 }}>等待 Walter／阿享設定出發資料</div>
       )}
     </div>
   );
@@ -969,7 +989,7 @@ function Day1ArrivePanel({ isAdmin, day1Challenge, onFinalize, saving }) {
   );
 }
 
-function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Result, isAdmin, onRequestAdvance, onStartDay2, onSaveDay1Start, onFinalizeDay1, savingDay1, savingAdvance, advanceError }) {
+function JourneyStageCard({ progress, allHere, checkedCount, segments, day1Challenge, day1Result, isAdmin, onRequestAdvance, onStartDay2, onSaveDay1Start, onFinalizeDay1, savingDay1, savingAdvance, advanceError }) {
   const current = progress.currentStop >= 0 ? stopById(progress.currentStop) : null;
   const next = nextStop(progress.currentStop);
   const finished = current && !nextStop(current.id) && dayOf(current.id) === 2;
@@ -978,7 +998,7 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
   const waitingAtInn = progress.currentStop === DAY1_ACCOMMODATION_STOP_ID && !finalized;
   const day1Complete = progress.currentStop === DAY1_LAST_ID;
   const isDay1Journey = dayOf(progress.currentStop) === 1;
-  const showStartForm = allHere && progress.currentStop === -1;
+  const showStartForm = progress.currentStop === -1;
   const showChallengeBanner = isDay1Journey && progress.currentStop >= 0 && challenge.startOdometer != null && !(waitingAtInn && !isAdmin) && !(day1Complete && finalized);
   const showDay1Result = isDay1Journey && finalized && day1Result;
   const day2Start = stopById(DAY2_START_ID);
@@ -992,6 +1012,9 @@ function JourneyStageCard({ progress, allHere, segments, day1Challenge, day1Resu
       <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.deepGreen, marginTop: 6 }}>
         {finished ? "🎉 全部行程跑完了" : current ? `📍 ${current.name}` : "🟢 集合中"}
       </div>
+      {progress.currentStop === -1 ? (
+        <div style={{ fontSize: 13, color: "#8A7A5C", fontWeight: 600, marginTop: 4 }}>{typeof checkedCount === "number" ? checkedCount : 0}/9 人報到</div>
+      ) : null}
       {current && current.address ? (
         <div style={{ fontSize: 13, color: "#9A8E6E", fontWeight: 600, marginTop: 4, lineHeight: 1.4 }}>{current.address}</div>
       ) : null}
@@ -2038,6 +2061,7 @@ function JourneyHome(props) {
       <JourneyStageCard
         progress={rest.progress}
         allHere={rest.checkedCount === 9}
+        checkedCount={rest.checkedCount}
         segments={rest.segments}
         day1Challenge={rest.day1Challenge}
         day1Result={rest.day1Result}
