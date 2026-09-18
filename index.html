@@ -839,7 +839,8 @@ function TravelMemoCard() {
 }
 
 function CheckinTab(props) {
-  const { people, myId, loaded, syncState, guesses, guessLocked, checkedCount, day1Result, ...handlers } = props;
+  const { people, myId, loaded, syncState, guesses, guessLocked, checkedCount, day1Result, progress, ...handlers } = props;
+  const day2Started = !!(progress && progress.currentStop >= DAY2_START_ID);
   return (
     <div style={{ paddingBottom: 96 }}>
       <HeroBanner /><InfoStrip />
@@ -847,7 +848,9 @@ function CheckinTab(props) {
         <Card><div style={{ textAlign: "center", padding: "30px 10px", color: "#8A7A5C" }}>{syncState === "error" ? "尚未連線，同步失敗" : "同步中…"}</div></Card>
       ) : (
         <>
-          <GuessSection myId={myId} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} onSaved={handlers.onSaved} />
+          {!day2Started ? (
+            <GuessSection myId={myId} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} onSaved={handlers.onSaved} />
+          ) : null}
           <CheckinBlock icon="🚀" title="出發報到" gaugeLabel="已報到" people={people} doneField="checkedIn" myId={myId}
             buttonPendingLabel="👋 我到啦！" buttonDoneLabel="✓ 已報到" remainingLabel="尚未抵達" allDoneLabel="🎉 全員到齊，準備出發！"
             resetLabel="重置全部報到人數" syncState={syncState} onCheckIn={handlers.onCheckIn} onReset={handlers.onResetCheckin} />
@@ -2335,7 +2338,7 @@ function App() {
   return (
     <div style={shellStyle}>
       <InSiteToast toast={inSiteToast} fading={toastFading} />
-      {tab === "checkin" && <CheckinTab people={people} myId={myId} loaded={loaded} syncState={syncState} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} onSaved={fetchAll}
+      {tab === "checkin" && <CheckinTab people={people} myId={myId} loaded={loaded} syncState={syncState} guesses={guesses} guessLocked={guessLocked} checkedCount={checkedCount} day1Result={day1Result} progress={progress} onSaved={fetchAll}
         onCheckIn={async () => { await postToSheet({ action: "checkin", id: me.sheetId }); fetchAll(); }}
         onCheckInHome={async () => { await postToSheet({ action: "checkinHome", id: me.sheetId }); fetchAll(); }}
         onResetCheckin={async () => { await postToSheet({ action: "resetAll" }); fetchAll(); }}
