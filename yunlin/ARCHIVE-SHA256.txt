@@ -1,0 +1,22 @@
+source_commit: 163e69d
+source_commit_date: 2026-09-28T01:38:45Z
+path_edits: none
+note: archive bytes are the git blobs from that commit. Relative paths already resolve inside this folder, so the copies were not edited.
+
+index.html  bytes=116572  original=6c8162202fdda1a7987692632859dfb88a94bf9c8858c8b1eb4a7dff29f9cddb  archive=6c8162202fdda1a7987692632859dfb88a94bf9c8858c8b1eb4a7dff29f9cddb  UNCHANGED
+config.template.js  bytes=4621  original=c92c69a6a5da7ece8042c8f019b25453dd2a2b2ac74278544365af25d079a93e  archive=c92c69a6a5da7ece8042c8f019b25453dd2a2b2ac74278544365af25d079a93e  UNCHANGED
+config.trip2026.js  bytes=3600  original=951df526a919e3cd9d4785b6d6a094cf9675192ec418854e301a833323c2b97a  archive=951df526a919e3cd9d4785b6d6a094cf9675192ec418854e301a833323c2b97a  UNCHANGED
+manifest.json  bytes=399  original=96e6db47d3619805f6f13deddf591295101a41483bc87df77cff138eb6801d9f  archive=96e6db47d3619805f6f13deddf591295101a41483bc87df77cff138eb6801d9f  UNCHANGED
+service-worker.js  bytes=1842  original=143e3245d73fd42ce86b9e22f2c2847c9edede94e20dea789cba4f27e5673d70  archive=143e3245d73fd42ce86b9e22f2c2847c9edede94e20dea789cba4f27e5673d70  UNCHANGED
+icon-192.png  bytes=21079  original=f3dca13f8ec69fb0b041036717009bc86651781bc19d76c242c103468a7386fa  archive=f3dca13f8ec69fb0b041036717009bc86651781bc19d76c242c103468a7386fa  UNCHANGED
+icon-512.png  bytes=152331  original=d59a189ab3ff2314809d8996d096138db643883303dae34d0797526c7213ca20  archive=d59a189ab3ff2314809d8996d096138db643883303dae34d0797526c7213ca20  UNCHANGED
+logo.png  bytes=684867  original=74fc5b64c1fe3a5b4090a1c84c55f778d467d7db7eb07a6ac7612987adb9bc61  archive=74fc5b64c1fe3a5b4090a1c84c55f778d467d7db7eb07a6ac7612987adb9bc61  UNCHANGED
+images/.gitkeep  bytes=1  original=01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b  archive=01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b  UNCHANGED
+images/trip-route-map.png  bytes=296894  original=d11219332323e16b166569f7cc3e2a62ac6f0f934acfc9e08a590ae7f8113716  archive=d11219332323e16b166569f7cc3e2a62ac6f0f934acfc9e08a590ae7f8113716  UNCHANGED
+trip-route-map.png  bytes=296894  original=d11219332323e16b166569f7cc3e2a62ac6f0f934acfc9e08a590ae7f8113716  archive=d11219332323e16b166569f7cc3e2a62ac6f0f934acfc9e08a590ae7f8113716  UNCHANGED
+apps-script/Code.gs  bytes=13270  original=a4b78c8847ffdd956b95ca2fddbafcde661739c3a2c3acc726ec5a624b476a41  archive=a4b78c8847ffdd956b95ca2fddbafcde661739c3a2c3acc726ec5a624b476a41  UNCHANGED
+
+readonly_phase: 6e2
+readonly_note: index.html now shows the read-only banner, blocks spreadsheet writes, and links back to the family entry. readonly.js is new. The 163e69d original hashes above remain the baseline.
+index.html  bytes=117819  original=6c8162202fdda1a7987692632859dfb88a94bf9c8858c8b1eb4a7dff29f9cddb  readonly=d26e49f009598bd55de7c3f1a91fcc3b04354dc63b9e87a0aabb7b4438a98d0f
+readonly.js  bytes=2099  original=none  readonly=161d8bca5eb073dfa4ebd506778c754406d13a8a77d028c85d061ff66099ba69

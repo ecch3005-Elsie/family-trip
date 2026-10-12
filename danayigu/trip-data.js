@@ -40,3 +40,7 @@ window.DANAYIGU_TRIP = {
     { key: "wake", icon: "🐔", label: "起床…咕咕咕" }
   ]
 };
+(function (root) {
+  if (!root || !root.DanayiguGuard) return;
+  root.DanayiguGuard.claim("trip-data.js", "6d1");
+})(typeof window !== "undefined" ? window : null);

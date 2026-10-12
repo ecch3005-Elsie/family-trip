@@ -80,3 +80,7 @@
     mergeBoards: mergeBoards
   };
 });
+(function (root) {
+  if (!root || !root.DanayiguGuard) return;
+  root.DanayiguGuard.claim("score.js", "6d1");
+})(typeof window !== "undefined" ? window : null);

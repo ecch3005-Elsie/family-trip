@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>瓦特鎮家族</title>
+<meta name="apple-mobile-web-app-title" content="瓦特鎮家族" />
+<style>
+  html, body { margin: 0; min-height: 100%; background: #f3e9d2; color: #1f4a3d; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif; }
+  main { max-width: 28rem; margin: 0 auto; padding: 48px 24px; text-align: center; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 12px; }
+  p { margin: 0 0 16px; line-height: 1.5; }
+  a { display: inline-block; min-height: 44px; line-height: 44px; color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>瓦特鎮家族</h1>
+  <p id="status">正在前往這一次旅行。</p>
+  <p><a id="go" href="../danayigu/">前往這一次旅行</a></p>
+</main>
+<script src="trips.preview.js"></script>
+<script src="entry.js"></script>
+<script>
+(function () {
+  var entry = window.FamilyTripEntry;
+  var config = window.FAMILY_TRIP_ENTRY;
+  var status = document.getElementById("status");
+  var link = document.getElementById("go");
+  if (!entry || !config || !entry.resolve) {
+    if (status) status.textContent = "入口設定還沒有載入。";
+    return;
+  }
+  var decision = entry.resolve({ search: location.search, config: config });
+  if (!decision.ok || !decision.href) {
+    if (status) status.textContent = "這次入口設定無法前往旅行。";
+    if (link) link.removeAttribute("href");
+    return;
+  }
+  if (link) link.setAttribute("href", decision.href);
+  var next = new URL(decision.href, location.href);
+  var here = location.pathname.replace(/\/index\.html$/, "/");
+  var there = next.pathname.replace(/\/index\.html$/, "/");
+  if (here === there && next.search === location.search) {
+    if (status) status.textContent = "入口設定會回到同一頁，已停止。";
+    return;
+  }
+  location.replace(decision.href);
+})();
+</script>
+</body>
+</html>

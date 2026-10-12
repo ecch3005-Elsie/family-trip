@@ -1,6 +1,6 @@
-/* 達娜伊谷這次開啟要選哪一位家人。
- * 網址有合法的 ?who= 就用那位。沒有 who，才用呼叫端傳來的已儲存代號。
- * 只認 family 裡的 sheetId。儲存與管理權杖由頁面處理，這裡不碰。
+/* 這次開啟要顯示哪一位家人。
+ * 呼叫端傳入永久身分、舊身分與網址。這裡只判斷，不碰儲存，也不碰管理權杖。
+ * 兩個有效身分不同時，不替任何人做決定，也不要求寫入。
  */
 (function (root, factory) {
   var api = factory();
@@ -47,14 +47,74 @@
     return { present: false, value: "" };
   }
 
-  function resolve(search, stored, family) {
-    var ids = memberIds(family);
-    var saved = isMember(ids, stored) ? String(stored) : "";
-    var query = queryWho(search);
-    if (!query.present) return { id: saved, persist: false };
-    if (!isMember(ids, query.value)) return { id: saved, persist: false };
-    return { id: query.value, persist: true };
+  function noWrites() {
+    return { permanent: "", legacy: "" };
+  }
+
+  function unique(list) {
+    var out = [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && out.indexOf(list[i]) < 0) out.push(list[i]);
+    }
+    return out;
+  }
+
+  function ready(id, writes) {
+    return { mode: "ready", id: id, writes: writes || noWrites(), options: [id] };
+  }
+
+  function choose() {
+    return { mode: "choose", id: "", writes: noWrites(), options: [] };
+  }
+
+  function confirm(options) {
+    return { mode: "confirm", id: "", writes: noWrites(), options: unique(options) };
+  }
+
+  function fromStored(permanent, legacy) {
+    if (permanent && legacy && permanent !== legacy) return confirm([permanent, legacy]);
+    if (permanent) return ready(permanent);
+    if (legacy) return ready(legacy, { permanent: legacy, legacy: "" });
+    return choose();
+  }
+
+  function decide(input) {
+    var source = input || {};
+    var ids = memberIds(source.family);
+    var permanent = isMember(ids, source.permanent) ? String(source.permanent) : "";
+    var legacy = isMember(ids, source.legacy) ? String(source.legacy) : "";
+    var query = queryWho(source.search);
+    var queryValid = query.present && isMember(ids, query.value);
+    var queryId = queryValid ? String(query.value) : "";
+    var writes;
+
+    if (query.present && !queryValid) {
+      var blocked = fromStored(permanent, legacy);
+      blocked.writes = noWrites();
+      return blocked;
+    }
+
+    if (queryValid) {
+      var options = unique([permanent, legacy, queryId]);
+      if (options.length > 1) return confirm(options);
+      writes = noWrites();
+      if (!permanent) writes.permanent = queryId;
+      if (!legacy) writes.legacy = queryId;
+      return ready(queryId, writes);
+    }
+
+    return fromStored(permanent, legacy);
+  }
+
+  function resolve(searchOrInput, stored, family) {
+    if (searchOrInput && typeof searchOrInput === "object") return decide(searchOrInput);
+    return decide({ search: searchOrInput, permanent: "", legacy: stored, family: family });
   }
 
   return { resolve: resolve };
 });
+(function (root) {
+  if (!root || !root.DanayiguGuard) return;
+  root.DanayiguGuard.claim("who.js", "6d1");
+})(typeof window !== "undefined" ? window : null);

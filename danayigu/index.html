@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-build="6d1">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -262,7 +262,10 @@
   .who-bar { padding: 10px 16px 0; }
   .who-hint { margin: 6px 0 0; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 600; }
   .who-hint[hidden] { display: none !important; }
+  .who-confirm { margin: 6px 0 0; text-align: center; color: var(--green); font-size: 13px; font-weight: 700; }
+  .who-confirm[hidden] { display: none !important; }
   .who-label { margin: 0 0 6px; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 700; }
+  .reload-page, .family-home { display: block; margin: 8px auto 0; min-height: 44px; max-width: calc(100% - 8px); padding: 8px 14px; line-height: 1.35; text-align: center; text-decoration: none; }
   .panel[hidden] { display: none !important; }
   .draft-banner, .card, .info-strip { margin: 12px 16px 0; }
   .draft-banner {
@@ -680,6 +683,90 @@
   .tabbar button.is-active .tab-icon { opacity: 1; }
   .tabbar button.is-active .tab-label { font-weight: 800; }
 </style>
+<script src="../entry-preview/trips.js"></script>
+<script src="../entry-preview/entry.js"></script>
+<script>
+(function () {
+  function familyHome(event) {
+    var config = window.FAMILY_TRIP_ENTRY;
+    var api = window.FamilyTripEntry;
+    var home = api && api.safeHome ? api.safeHome(config && config.home) : "";
+    var link = event && event.currentTarget;
+    if (!home) {
+      if (event) event.preventDefault();
+      return;
+    }
+    if (link && link.setAttribute) link.setAttribute("href", home);
+    var playing = window.DanayiguPuzzle && DanayiguPuzzle.playing && DanayiguPuzzle.playing();
+    if (!playing) return;
+    if (event) event.preventDefault();
+    if (!window.confirm("這一局拼圖還沒完成。前往最新旅程後，這一局的進度會消失。已經送出的成績、報到和留言都還在。要離開嗎？")) return;
+    location.assign(home);
+  }
+  window.DanayiguFamilyHome = familyHome;
+  function reloadNow() { location.reload(); }
+  function reloadPage() {
+    var playing = window.DanayiguPuzzle && DanayiguPuzzle.playing && DanayiguPuzzle.playing();
+    if (playing && !window.confirm("這一局拼圖還沒完成。重新整理後，這一局的進度會消失。已經送出的成績、報到和留言都還在。要重新整理嗎？")) return;
+    reloadNow();
+  }
+  window.DanayiguReload = reloadPage;
+  function banner() {
+    if (document.getElementById("danayigu-reload-banner")) return;
+    var bar = document.createElement("div");
+    var text = document.createElement("p");
+    var button = document.createElement("button");
+    bar.id = "danayigu-reload-banner";
+    bar.setAttribute("role", "status");
+    bar.style.cssText = "position:fixed;left:12px;right:12px;bottom:76px;z-index:40;padding:12px;border-radius:12px;background:#1F4A3D;color:#FBF6EC;text-align:center;";
+    text.style.cssText = "margin:0 0 8px;font:600 15px/1.45 sans-serif;";
+    text.textContent = "這個畫面需要重新整理才能繼續使用。這不會刪除主畫面圖示，也不會清掉你的名字、報到或成績。";
+    button.type = "button";
+    button.textContent = "重新整理";
+    button.style.cssText = "min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#E8B34A;color:#1F4A3D;font:700 16px sans-serif;";
+    button.addEventListener("click", reloadNow);
+    bar.appendChild(text);
+    bar.appendChild(button);
+    (document.body || document.documentElement).appendChild(bar);
+  }
+  window.DanayiguShowReload = banner;
+  function blocked(event) {
+    if (window.DanayiguGuard && DanayiguGuard.accepted()) return;
+    var target = event.target;
+    if (!target || !target.closest) return;
+    if (!target.closest("#depart-button,#home-button,#depart-yes,#home-yes,#say-send,#say-retry,#ann-open,#ann-send,#ann-retry,#submit-score,#close-confirm,#close-contest-open,#phrase-grid")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    banner();
+  }
+  document.addEventListener("click", blocked, true);
+  document.addEventListener("submit", function (event) {
+    if (window.DanayiguGuard && DanayiguGuard.accepted()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    banner();
+  }, true);
+  window.addEventListener("error", function (event) {
+    var node = event.target;
+    if (!node || node.tagName !== "SCRIPT") return;
+    banner();
+  }, true);
+  function wire() {
+    var button = document.getElementById("reload-page");
+    if (button) button.addEventListener("click", reloadPage);
+    var home = document.getElementById("family-home");
+    if (home) {
+      var config = window.FAMILY_TRIP_ENTRY;
+      var api = window.FamilyTripEntry;
+      var target = api && api.safeHome ? api.safeHome(config && config.home) : "";
+      if (target) home.setAttribute("href", target);
+      home.addEventListener("click", familyHome);
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+  else wire();
+})();
+</script>
 </head>
 <body>
 <div class="shell">
@@ -735,7 +822,10 @@
   <div class="who-bar">
     <p class="who-label">你是誰</p>
     <div class="who" id="who" role="group" aria-label="你是誰"></div>
+    <p class="who-confirm" id="who-confirm" hidden></p>
     <p class="who-hint" id="checkin-hint">請先在上方選擇你是誰。</p>
+    <button type="button" class="text-btn reload-page" id="reload-page">重新整理</button>
+    <a class="text-btn family-home" id="family-home" href="#">瓦特鎮家族／最新旅程</a>
   </div>
 
   <section id="panel-checkin" class="panel" data-tab="checkin">
@@ -990,25 +1080,34 @@
     </div>
   </form>
 </dialog>
-<script src="score.js"></script>
-<script src="config.js"></script>
-<script src="trip-data.js"></script>
-<script src="clock.js"></script>
-<script src="who.js"></script>
-<script src="checkin-view.js"></script>
-<script src="shell.js"></script>
+<script src="guard.js?build=6d1"></script>
+<script src="score.js?build=6d1"></script>
+<script src="config.js?build=6d1"></script>
+<script src="trip-data.js?build=6d1"></script>
+<script src="clock.js?build=6d1"></script>
+<script src="who.js?build=6d1"></script>
+<script src="checkin-view.js?build=6d1"></script>
+<script src="shell.js?build=6d1"></script>
 <script>
 (function () {
+  if (!window.DanayiguGuard || !DanayiguGuard.readyForPage("6d1") || !window.DanayiguScore || !window.DanayiguClock || !window.DANAYIGU_CONFIG || !window.DANAYIGU_TRIP || !window.DanayiguWho || !window.DanayiguCheckin) {
+    if (window.DanayiguGuard) DanayiguGuard.fail("page");
+    if (window.DanayiguShowReload) DanayiguShowReload();
+    return;
+  }
+  DanayiguGuard.claim("page", "6d1");
   var adminToken = "";
   try { sessionStorage.removeItem("danayigu-admin-link"); } catch (err) { /* 舊版暫存清不掉時，這個頁面也不會再讀它 */ }
   consumeAdminFragment();
 
   var FALLBACK = "test-image.png";
   var WHO_KEY = "danayigu-who";
+  var PERMANENT_KEY = "family-trip-who";
   var cfg = window.DANAYIGU_CONFIG || {};
   var rules = window.DanayiguScore;
   var family = Array.isArray(cfg.family) ? cfg.family : [];
   var source = resolveSource(cfg);
+  var whoState = { mode: "choose", id: "", writes: { permanent: "", legacy: "" }, options: [] };
   var whoId = readWho();
   var offlineRows = [];
   var lastScores = [];
@@ -1029,6 +1128,11 @@
     pending: null
   };
   var timing = window.DanayiguClock.fresh();
+  window.DanayiguPuzzle = {
+    playing: function () {
+      return !!(state.ready && !state.solved && (state.moves > 0 || timing.clockOn));
+    }
+  };
   var tripView = { checkins: [], messages: [], announcements: [], synced: false, stale: false, syncReady: null };
 
   var board = document.getElementById("board");
@@ -1143,18 +1247,60 @@
     return msg;
   }
 
+  function readStored(key) {
+    try { return localStorage.getItem(key) || ""; } catch (err) { return ""; }
+  }
+
   function readWho() {
-    var stored = "";
-    try { stored = localStorage.getItem(WHO_KEY) || ""; } catch (err) { stored = ""; }
     var decided = window.DanayiguWho
-      ? window.DanayiguWho.resolve(location.search, stored, family)
-      : { id: family.some(function (p) { return p.sheetId === stored; }) ? stored : "", persist: false };
-    if (decided.persist && decided.id) writeWho(decided.id);
-    return decided.id || "";
+      ? window.DanayiguWho.resolve({
+        search: location.search,
+        permanent: readStored(PERMANENT_KEY),
+        legacy: readStored(WHO_KEY),
+        family: family
+      })
+      : { mode: "choose", id: "", writes: { permanent: "", legacy: "" }, options: [] };
+    whoState = decided;
+    applyWrites(decided.writes);
+    return decided.mode === "ready" ? (decided.id || "") : "";
+  }
+
+  function applyWrites(writes) {
+    if (!writes) return;
+    if (writes.permanent && writes.legacy) writeWho(writes.permanent);
+    else if (writes.permanent) writePermanent(writes.permanent);
+    else if (writes.legacy) writeLegacy(writes.legacy);
+  }
+
+  function writePermanent(id) {
+    if (!id) return;
+    try { localStorage.setItem(PERMANENT_KEY, id); } catch (err) { /* 補上永久身分失敗時，這次仍顯示這位家人 */ }
+  }
+
+  function writeLegacy(id) {
+    if (!id) return;
+    try { localStorage.setItem(WHO_KEY, id); } catch (err) { /* 舊身分鍵寫不進時，不改掉另一個鍵 */ }
   }
 
   function writeWho(id) {
-    try { localStorage.setItem(WHO_KEY, id); } catch (err) { /* 身份只影響這個畫面的選擇 */ }
+    if (!id) return;
+    try {
+      localStorage.setItem(PERMANENT_KEY, id);
+      localStorage.setItem(WHO_KEY, id);
+    } catch (err) { /* 身份只影響這個畫面的選擇 */ }
+  }
+
+  function identityCommitted() {
+    return !!(whoState && whoState.mode === "ready" && whoId && personName(whoId));
+  }
+
+  function identityWriteBlocked(body) {
+    var action = body && body.action;
+    var id = body && body.id ? String(body.id) : "";
+    var needsPerson = action === "checkin" || action === "clearCheckin" || action === "sendMessage" || action === "submitScore" || action === "closeContest";
+    if (needsPerson && (!identityCommitted() || id !== whoId)) return "請先確認你是誰。這次沒有送出。";
+    if (action === "postAnnouncement" && id && (!identityCommitted() || id !== whoId)) return "請先確認你是誰。這次沒有送出。";
+    return "";
   }
 
   function personName(id) {
@@ -1163,8 +1309,26 @@
     return "";
   }
 
+  function confirmNames() {
+    var names = [];
+    var options = whoState && whoState.options ? whoState.options : [];
+    var i;
+    for (i = 0; i < options.length; i++) names.push(personName(options[i]) || options[i]);
+    return names.join("、");
+  }
+
+  function acceptIdentity(id) {
+    whoId = id;
+    whoState = { mode: "ready", id: id, writes: { permanent: id, legacy: id }, options: [id] };
+    writeWho(whoId);
+    renderWho();
+    paintScores();
+    if (state.pending && !state.pending.sent) sendPending();
+  }
+
   function renderWho() {
     var wrap = document.getElementById("who");
+    var confirm = document.getElementById("who-confirm");
     wrap.innerHTML = "";
     family.forEach(function (person) {
       var btn = document.createElement("button");
@@ -1173,14 +1337,16 @@
       btn.dataset.sheetId = person.sheetId;
       btn.setAttribute("aria-pressed", person.sheetId === whoId ? "true" : "false");
       btn.addEventListener("click", function () {
-        whoId = person.sheetId;
-        writeWho(whoId);
-        renderWho();
-        paintScores();
-        if (state.pending && !state.pending.sent) sendPending();
+        acceptIdentity(person.sheetId);
       });
       wrap.appendChild(btn);
     });
+    if (confirm) {
+      confirm.hidden = !whoState || whoState.mode !== "confirm";
+      confirm.textContent = confirm.hidden
+        ? ""
+        : (confirmNames() + "都在這支手機裡。請點一次你的名字。確認前不會送出報到、留言或成績。");
+    }
     renderAdmin();
     try {
       window.dispatchEvent(new CustomEvent("danayigu-who"));
@@ -1450,6 +1616,7 @@
   }
 
   function requestClose() {
+    if (!identityCommitted()) return Promise.resolve({ ok: false, error: "請先確認你是誰。這次沒有送出。" });
     if (source.mode !== "live" || !hasAdminLink()) return Promise.resolve({ ok: false, error: "無法結束比賽" });
     return fetch(source.url, {
       method: "POST",
@@ -1468,6 +1635,9 @@
   }
 
   function requestSubmit(body) {
+    if (!identityCommitted() || !body || body.id !== whoId) {
+      return Promise.resolve({ ok: false, error: "請先確認你是誰。這次沒有送出。" });
+    }
     if (source.mode === "offline") return Promise.resolve(offlineSubmit(body));
     if (source.mode !== "live") return Promise.resolve({ ok: false, error: source.reason || "目前不會連線" });
     return fetch(source.url, {
@@ -1618,6 +1788,8 @@
   }
 
   function requestTrip(body) {
+    var held = identityWriteBlocked(body);
+    if (held) return Promise.resolve({ ok: false, error: held });
     if (source.mode !== "live") return Promise.resolve({ ok: false, error: "目前沒有連上，這次沒有送出" });
     return fetch(source.url, {
       method: "POST",
@@ -1688,7 +1860,7 @@
   }
 
   function sendPending() {
-    if (sending || !state.pending || state.pending.sent || !whoId) return;
+    if (sending || !state.pending || state.pending.sent || !identityCommitted()) return;
     var pending = state.pending;
     var token = state.roundToken;
     var body = {
@@ -1730,8 +1902,8 @@
   document.getElementById("restart").addEventListener("click", function () { newGame(state.n); });
   document.getElementById("play-again").addEventListener("click", function () { newGame(state.n); });
   document.getElementById("submit-score").addEventListener("click", function () {
-    if (!whoId) {
-      setPendingStatus("請先選擇你是誰，再送出這次成績", true);
+    if (!identityCommitted()) {
+      setPendingStatus("請先確認你是誰，再送出這次成績", true);
       return;
     }
     sendPending();
@@ -1859,6 +2031,12 @@
     newGame(3);
   }).catch(showLoadError);
 })();
+</script>
+<script>
+if (window.DanayiguGuard && !DanayiguGuard.accepted()) {
+  DanayiguGuard.fail("finish");
+  if (window.DanayiguShowReload) DanayiguShowReload();
+}
 </script>
 </body>
 </html>

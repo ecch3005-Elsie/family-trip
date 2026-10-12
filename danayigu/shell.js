@@ -853,18 +853,6 @@
   if (nextTime) nextTime.textContent = (trip.meeting && trip.meeting.timeText) || "尚未確定";
   if (nextPlace && trip.stops && trip.stops[0]) nextPlace.textContent = "📍 " + trip.stops[0].name;
 
-  fillPhrases();
-  renderTripLists();
-  renderCheckin();
-  renderSays();
-  renderAnnouncements();
-  renderMirrors();
-  renderBadges();
-  bind();
-
-  var adminHash = /^#a=/.test(location.hash || "");
-  show(adminHash ? "puzzle" : (tabFromQuery() || "checkin"), false);
-  if (adminHash) rememberPuzzleTab();
   function syncIdentity() {
     renderCheckin();
     var sayHint = document.getElementById("say-hint");
@@ -877,7 +865,94 @@
     renderSays();
     renderMirrors();
   }
+
+  var SHELL_BUILD = "6d1";
+  var SHELL_NODES = ["who", "who-confirm", "ann-open", "depart-gauge", "home-gauge", "phrase-grid", "depart-button", "home-button", "depart-yes", "home-yes", "say-send", "ann-send", "submit-score", "close-confirm"];
+
+  function pageBuild() {
+    var root = document.documentElement;
+    if (!root || !root.getAttribute) return "";
+    return root.getAttribute("data-build") || "";
+  }
+
+  function missingShellNode() {
+    var i;
+    for (i = 0; i < SHELL_NODES.length; i++) {
+      if (!document.getElementById(SHELL_NODES[i])) return SHELL_NODES[i];
+    }
+    if (!document.querySelector || !document.querySelector(".tabbar")) return "tabbar";
+    return "";
+  }
+
+  function showReloadBanner() {
+    if (window.DanayiguShowReload) {
+      DanayiguShowReload();
+      return;
+    }
+    if (document.getElementById("danayigu-reload-banner")) return;
+    var bar = document.createElement("div");
+    var text = document.createElement("p");
+    var button = document.createElement("button");
+    bar.id = "danayigu-reload-banner";
+    bar.setAttribute("role", "status");
+    text.textContent = "這個畫面需要重新整理才能繼續使用。這不會刪除主畫面圖示，也不會清掉你的名字、報到或成績。";
+    button.type = "button";
+    button.textContent = "重新整理";
+    button.addEventListener("click", function () { location.reload(); });
+    bar.appendChild(text);
+    bar.appendChild(button);
+    if (document.body) document.body.appendChild(bar);
+  }
+
+  function holdOfficialPost() {
+    if (window.__danayiguPostHeld) return;
+    window.__danayiguPostHeld = true;
+    var native = window.fetch;
+    if (typeof native !== "function") return;
+    window.fetch = function (input, init) {
+      var method = "GET";
+      if (init && init.method) method = String(init.method);
+      else if (input && input.method) method = String(input.method);
+      if (method.toUpperCase() === "POST") {
+        return Promise.resolve({
+          ok: false,
+          json: function () { return Promise.resolve({ ok: false, error: "請先按重新整理" }); }
+        });
+      }
+      return native.apply(window, arguments);
+    };
+  }
+
+  function pageAllowsShell() {
+    var missing = missingShellNode();
+    if (pageBuild() !== SHELL_BUILD || missing) {
+      holdOfficialPost();
+      showReloadBanner();
+      if (window.DanayiguGuard) DanayiguGuard.fail(missing || "build");
+      return false;
+    }
+    if (window.DanayiguGuard && !DanayiguGuard.claim("shell.js", SHELL_BUILD)) {
+      showReloadBanner();
+      return false;
+    }
+    return true;
+  }
+
+  if (pageAllowsShell()) {
+  fillPhrases();
+  renderTripLists();
+  renderCheckin();
+  renderSays();
+  renderAnnouncements();
+  renderMirrors();
+  renderBadges();
+  bind();
+
+  var adminHash = /^#a=/.test(location.hash || "");
+  show(adminHash ? "puzzle" : (tabFromQuery() || "checkin"), false);
+  if (adminHash) rememberPuzzleTab();
   window.addEventListener("danayigu-who", syncIdentity);
   if (document.readyState === "complete") syncIdentity();
   else window.addEventListener("load", syncIdentity);
+  }
 })();

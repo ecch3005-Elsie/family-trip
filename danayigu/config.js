@@ -27,3 +27,7 @@ window.DANAYIGU_CONFIG = {
   reviewUnlockAt: "",
   feedbackQuestions: []
 };
+(function (root) {
+  if (!root || !root.DanayiguGuard) return;
+  root.DanayiguGuard.claim("config.js", "6d1");
+})(typeof window !== "undefined" ? window : null);

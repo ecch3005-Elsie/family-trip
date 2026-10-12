@@ -36,3 +36,7 @@
 
   return { fresh: fresh, elapsed: elapsed, begin: begin, stop: stop, reset: reset };
 });
+(function (root) {
+  if (!root || !root.DanayiguGuard) return;
+  root.DanayiguGuard.claim("clock.js", "6d1");
+})(typeof window !== "undefined" ? window : null);
