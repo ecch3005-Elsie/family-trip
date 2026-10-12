@@ -265,6 +265,9 @@
   .who-confirm { margin: 6px 0 0; text-align: center; color: var(--green); font-size: 13px; font-weight: 700; }
   .who-confirm[hidden] { display: none !important; }
   .who-label { margin: 0 0 6px; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 700; }
+  .who-welcome { margin: 0; text-align: center; color: var(--green); font-size: 17px; font-weight: 700; line-height: 1.4; }
+  .who-switch { display: block; margin: 2px auto 0; min-height: 32px; padding: 0 8px; border: 0; background: transparent; box-shadow: none; color: #8A7A5C; font-size: 13px; font-weight: 600; }
+  .who[hidden], .who-label[hidden], .who-welcome[hidden], .who-switch[hidden] { display: none !important; }
   .reload-page, .family-home { display: block; margin: 8px auto 0; min-height: 44px; max-width: calc(100% - 8px); padding: 8px 14px; line-height: 1.35; text-align: center; text-decoration: none; }
   .panel[hidden] { display: none !important; }
   .draft-banner, .card, .info-strip { margin: 12px 16px 0; }
@@ -820,10 +823,12 @@
     </article>
   </div>
   <div class="who-bar">
-    <p class="who-label">你是誰</p>
+    <p class="who-welcome" id="who-welcome" hidden></p>
+    <p class="who-label" id="who-label">你是誰</p>
     <div class="who" id="who" role="group" aria-label="你是誰"></div>
     <p class="who-confirm" id="who-confirm" hidden></p>
     <p class="who-hint" id="checkin-hint">請先在上方選擇你是誰。</p>
+    <button type="button" class="who-switch" id="who-switch" hidden>換一個人</button>
     <button type="button" class="text-btn reload-page" id="reload-page">重新整理</button>
     <a class="text-btn family-home" id="family-home" href="#">瓦特鎮家族／最新旅程</a>
   </div>
@@ -1109,6 +1114,7 @@
   var source = resolveSource(cfg);
   var whoState = { mode: "choose", id: "", writes: { permanent: "", legacy: "" }, options: [] };
   var whoId = readWho();
+  var whoPickerOpen = false;
   var offlineRows = [];
   var lastScores = [];
   var contest = { status: "open", champions: { "3": null, "4": null } };
@@ -1318,6 +1324,7 @@
   }
 
   function acceptIdentity(id) {
+    whoPickerOpen = false;
     whoId = id;
     whoState = { mode: "ready", id: id, writes: { permanent: id, legacy: id }, options: [id] };
     writeWho(whoId);
@@ -1347,6 +1354,20 @@
         ? ""
         : (confirmNames() + "都在這支手機裡。請點一次你的名字。確認前不會送出報到、留言或成績。");
     }
+    var ready = !!(whoState && whoState.mode === "ready" && whoId);
+    var showPicker = !ready || whoPickerOpen;
+    var welcome = document.getElementById("who-welcome");
+    var label = document.getElementById("who-label");
+    var hint = document.getElementById("checkin-hint");
+    var switcher = document.getElementById("who-switch");
+    wrap.hidden = !showPicker;
+    if (label) label.hidden = !showPicker;
+    if (welcome) {
+      welcome.hidden = !ready;
+      welcome.textContent = ready ? ("嗨，" + personName(whoId) + "！準備出發囉 🛵") : "";
+    }
+    if (hint) hint.hidden = ready;
+    if (switcher) switcher.hidden = !ready;
     renderAdmin();
     try {
       window.dispatchEvent(new CustomEvent("danayigu-who"));
@@ -2002,6 +2023,12 @@
     }
   };
 
+  var whoSwitch = document.getElementById("who-switch");
+  if (whoSwitch) whoSwitch.addEventListener("click", function () {
+    if (!whoState || whoState.mode !== "ready" || !whoId) return;
+    whoPickerOpen = true;
+    renderWho();
+  });
   renderWho();
   paintScores();
   if (source.mode === "blocked") {
