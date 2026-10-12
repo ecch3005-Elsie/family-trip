@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-build="6d1">
+<html lang="zh-Hant" data-build="6d2">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,6 +9,7 @@
 <title>2026 達娜伊谷一日機車小旅行</title>
 <style>
   :root {
+    --text: 1.15;
     --green: #1F4A3D;
     --gold: #E8B34A;
     --cream: #F3E9D2;
@@ -34,25 +35,25 @@
   }
   header, .who, .mode, .sync, .reserved { width: min(100%, 1040px); }
   header { text-align: center; }
-  h1 { margin: 0; font-size: 20px; line-height: 1.2; color: var(--green); }
-  .sub { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: #6d6252; }
+  h1 { margin: 0; font-size: calc(20px * var(--text)); line-height: 1.2; color: var(--green); }
+  .sub { margin: 2px 0 0; font-size: calc(13px * var(--text)); font-weight: 600; color: #6d6252; }
   .who { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
   .who button, .actions button, .text-btn, .done button {
     border: 0;
     background: var(--paper);
     color: var(--green);
     font-weight: 700;
-    min-height: 36px;
+    min-height: 42px;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(31, 74, 61, 0.08);
   }
-  .who button { padding: 0 10px; font-size: 14px; }
+  .who button { padding: 0 10px; font-size: calc(14px * var(--text)); }
   .who button[aria-pressed="true"] { background: var(--green); color: var(--paper); }
   .mode, .sync, .reserved, .later-title, .empty {
     margin: 0;
     text-align: center;
     color: #5c5144;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     line-height: 1.45;
   }
   .mode { font-weight: 700; }
@@ -77,14 +78,14 @@
     color: var(--green);
     font-weight: 700;
     min-width: 58px;
-    min-height: 32px;
+    min-height: 36px;
     border-radius: 999px;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
   }
   .diff button[aria-pressed="true"] { background: var(--green); color: var(--paper); }
-  .stats { margin: 0; font-size: 15px; font-variant-numeric: tabular-nums; }
-  .stats b { font-size: 18px; color: var(--green); }
-  .hint { margin: 0; min-height: 1.1em; font-size: 13px; color: #5c5144; text-align: center; }
+  .stats { margin: 0; font-size: calc(15px * var(--text)); font-variant-numeric: tabular-nums; }
+  .stats b { font-size: calc(18px * var(--text)); color: var(--green); }
+  .hint { margin: 0; min-height: 1.1em; font-size: calc(13px * var(--text)); color: #5c5144; text-align: center; }
   .stage {
     width: 100%;
     height: min(92vw, 64dvh);
@@ -115,7 +116,7 @@
     outline-offset: 2px;
   }
   .actions { display: flex; justify-content: center; gap: 8px; }
-  .actions button, .done button, .text-btn { padding: 0 12px; font-size: 14px; }
+  .actions button, .done button, .text-btn { padding: 0 12px; font-size: calc(14px * var(--text)); }
   .actions button.primary, .done button.primary { background: var(--green); color: var(--paper); }
   .done {
     width: 100%;
@@ -130,7 +131,7 @@
     padding: 4px;
   }
   .done[hidden], .board[hidden], .error[hidden], #submit-score[hidden] { display: none !important; }
-  .done h2 { margin: 0; color: var(--green); font-size: 20px; }
+  .done h2 { margin: 0; color: var(--green); font-size: calc(20px * var(--text)); }
   .done img {
     width: auto;
     height: auto;
@@ -140,9 +141,9 @@
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(31, 74, 61, 0.16);
   }
-  .done-stats, .done-status { margin: 0; font-size: 15px; }
+  .done-stats, .done-status { margin: 0; font-size: calc(15px * var(--text)); }
   .done-stats b { color: var(--green); font-variant-numeric: tabular-nums; }
-  .done-status { font-size: 13px; color: #5c5144; }
+  .done-status { font-size: calc(13px * var(--text)); color: #5c5144; }
   .scores { display: grid; grid-template-columns: 1fr; gap: 8px; }
   .score-card {
     background: var(--paper);
@@ -150,7 +151,7 @@
     padding: 12px;
     box-shadow: 0 8px 24px rgba(31, 74, 61, 0.08);
   }
-  .score-card h2 { margin: 0; text-align: center; color: var(--green); font-size: 18px; }
+  .score-card h2 { margin: 0; text-align: center; color: var(--green); font-size: calc(18px * var(--text)); }
   .score-card ol { list-style: none; margin: 8px 0 0; padding: 0; }
   .score-card li {
     display: grid;
@@ -159,7 +160,7 @@
     align-items: center;
     padding: 7px 4px;
     border-top: 1px solid var(--line);
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
   }
   .score-card li.is-me { background: #FBF0D6; border-radius: 8px; }
   .rank, .time, .moves { font-variant-numeric: tabular-nums; }
@@ -186,16 +187,16 @@
     box-shadow: 0 8px 24px rgba(31, 74, 61, 0.1);
   }
   .ceremony[hidden], #admin-actions[hidden], #close-contest-open[hidden] { display: none !important; }
-  .ceremony h2 { margin: 0; color: var(--green); font-size: 22px; }
+  .ceremony h2 { margin: 0; color: var(--green); font-size: calc(22px * var(--text)); }
   .ceremony-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
   .champ { border-radius: 14px; background: #FBF0D6; padding: 10px 8px; }
-  .champ h3 { margin: 0; color: var(--green); font-size: 16px; }
-  .champ p { margin: 6px 0 0; font-size: 18px; font-weight: 800; }
-  .champ .meta { min-height: 1.2em; font-size: 14px; font-weight: 700; color: var(--green); }
+  .champ h3 { margin: 0; color: var(--green); font-size: calc(16px * var(--text)); }
+  .champ p { margin: 6px 0 0; font-size: calc(18px * var(--text)); font-weight: 800; }
+  .champ .meta { min-height: 1.2em; font-size: calc(14px * var(--text)); font-weight: 700; color: var(--green); }
   #admin-actions { width: min(100%, 1040px); }
   #close-contest-open { min-height: 44px; padding: 0 16px; }
   #close-contest { width: min(92vw, 420px); max-height: calc(100dvh - 24px); overflow: auto; padding: 16px; }
-  #close-contest h2 { margin: 0 0 8px; color: var(--green); text-align: center; font-size: 20px; }
+  #close-contest h2 { margin: 0 0 8px; color: var(--green); text-align: center; font-size: calc(20px * var(--text)); }
   #close-contest p { margin: 0 0 12px; line-height: 1.5; text-align: center; }
   #close-contest .actions { margin-top: 12px; }
   #close-contest .actions button { flex: 1 1 0; min-height: 44px; }
@@ -204,7 +205,7 @@
   }
   @media (min-width: 900px) {
     .app { gap: 10px; padding: 12px 16px 20px; }
-    h1 { font-size: 24px; }
+    h1 { font-size: calc(24px * var(--text)); }
     .layout { flex-direction: row; align-items: flex-start; }
     .play { flex: 1 1 auto; }
     .scores { width: 340px; flex: 0 0 340px; }
@@ -218,20 +219,21 @@
     width: min(100%, 420px);
     margin: 0 auto;
     min-height: 100dvh;
-    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
   .hero {
     position: relative;
-    height: 135px;
+    height: calc(152px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
     overflow: hidden;
     background: linear-gradient(180deg, #1F4A3D 0%, #4C8763 68%, #E8B34A 100%);
   }
   .hero svg.ridges { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .hero-copy { position: absolute; top: 10px; left: 14px; right: 14px; color: #FBF6EC; }
+  .hero-copy { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: 14px; right: 14px; color: #FBF6EC; }
   h1.hero-title {
     margin: 0;
     color: #FBF6EC;
-    font-size: 18px;
+    font-size: calc(18px * var(--text));
     font-weight: 800;
     line-height: 1.25;
     text-align: center;
@@ -256,20 +258,34 @@
   .logo-wrap img { width: 46px; height: 46px; object-fit: contain; display: block; }
   .brand-text { text-align: left; min-width: 0; }
   .brand-text strong, .brand-text span { display: block; line-height: 1.3; overflow-wrap: anywhere; }
-  .brand-text strong { font-size: 16px; font-weight: 700; opacity: 0.98; }
-  .brand-text span { margin-top: 2px; font-size: 15px; font-weight: 500; opacity: 0.92; }
-  .vespa { flex: 0 0 auto; width: 72px; height: 48px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25)); }
+  .brand-text strong { font-size: calc(16px * var(--text)); font-weight: 700; opacity: 0.98; }
+  .brand-text span { margin-top: 2px; font-size: calc(15px * var(--text)); font-weight: 500; opacity: 0.92; white-space: nowrap; }
+  .vespa { flex: 0 0 auto; width: 66px; height: auto; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25)); }
   .who-bar { padding: 10px 16px 0; }
-  .who-hint { margin: 6px 0 0; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 600; }
+  .who-hint { margin: 6px 0 0; text-align: center; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 600; }
   .who-hint[hidden] { display: none !important; }
-  .who-confirm { margin: 6px 0 0; text-align: center; color: var(--green); font-size: 13px; font-weight: 700; }
+  .who-confirm { margin: 6px 0 0; text-align: center; color: var(--green); font-size: calc(13px * var(--text)); font-weight: 700; }
   .who-confirm[hidden] { display: none !important; }
-  .who-label { margin: 0 0 6px; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 700; }
-  .who-welcome { margin: 0; text-align: center; color: var(--green); font-size: 17px; font-weight: 700; line-height: 1.4; }
-  .who-switch { display: block; margin: 2px auto 0; min-height: 32px; padding: 0 8px; border: 0; background: transparent; box-shadow: none; color: #8A7A5C; font-size: 13px; font-weight: 600; }
+  .who-label { margin: 0 0 6px; text-align: center; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 700; }
+  .who-welcome { margin: 0; text-align: center; color: var(--green); font-size: calc(17px * var(--text)); font-weight: 700; line-height: 1.4; }
+  .who-switch { display: block; margin: 2px auto 0; min-height: 32px; padding: 0 8px; border: 0; background: transparent; box-shadow: none; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 600; }
   .who[hidden], .who-label[hidden], .who-welcome[hidden], .who-switch[hidden] { display: none !important; }
   .reload-page, .family-home { display: block; margin: 8px auto 0; min-height: 44px; max-width: calc(100% - 8px); padding: 8px 14px; line-height: 1.35; text-align: center; text-decoration: none; }
-  .family-home[hidden] { display: none !important; }
+  .reload-page[hidden], .family-home[hidden] { display: none !important; }
+  #push-note { margin: 8px 0 0; }
+  #push-note[hidden], #push-enable[hidden] { display: none !important; }
+  #family-ann, #family-say { scroll-margin-top: 12px; }
+  #push-enable {
+    display: block;
+    margin: 4px auto 0;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 0;
+    background: transparent;
+    color: var(--green);
+    font: inherit;
+    font-weight: 700;
+  }
   .panel[hidden] { display: none !important; }
   .draft-banner, .card, .info-strip { margin: 12px 16px 0; }
   .draft-banner {
@@ -278,7 +294,7 @@
     background: #FFF4E5;
     border: 1px solid #E4732C;
     color: #6A3B12;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     font-weight: 700;
     line-height: 1.45;
   }
@@ -290,21 +306,24 @@
     padding: 14px 14px;
     box-shadow: 0 6px 18px rgba(31, 74, 61, 0.10);
   }
-  .card h2 { margin: 0; color: #1F4A3D; font-size: 18px; }
+  .card h2 { margin: 0; color: #1F4A3D; font-size: calc(18px * var(--text)); }
   #checkin-info {
     margin: -18px 16px 0;
     position: relative;
     z-index: 2;
   }
-  #checkin-info[hidden], #plan-progress[hidden] { display: none !important; }
+  #checkin-info[hidden], #plan-progress[hidden], #journey-status[hidden], #journey-next[hidden], #review-locked[hidden], #review-body[hidden], #journey-banner[hidden], #mode-line[hidden], #sync-line[hidden] { display: none !important; }
+  .meet-address { margin: 4px 0 0; color: #4A3617; font-size: calc(13px * var(--text)); font-weight: 600; line-height: 1.45; }
+  #checkin-info .meet-nav { display: block; width: auto; margin: 8px 0 0; text-align: center; }
+  .review-locked { margin: 28px 16px; text-align: center; color: #1F4A3D; font-size: calc(18px * var(--text)); font-weight: 800; line-height: 1.5; }
   #checkin-info .card {
     border-radius: 16px;
     padding: 10px 14px;
     box-shadow: 0 8px 20px rgba(31, 74, 61, 0.18);
   }
-  #checkin-info .place-name { margin-top: 2px; font-size: 17px; font-weight: 700; }
+  #checkin-info .place-name { margin-top: 2px; font-size: calc(17px * var(--text)); font-weight: 700; }
   .checkin-card { margin: 16px 16px 0; padding: 16px; }
-  .checkin-card h2 { margin: 0 0 10px; font-size: 17px; font-weight: 800; }
+  .checkin-card h2 { margin: 0 0 10px; font-size: calc(17px * var(--text)); font-weight: 800; }
   .gauge { position: relative; width: 132px; height: 132px; margin: 0 auto; }
   .gauge svg { display: block; }
   .gauge-center {
@@ -316,8 +335,8 @@
     justify-content: center;
     pointer-events: none;
   }
-  .gauge-count { font-size: 28px; font-weight: 800; color: #1F4A3D; line-height: 1; }
-  .gauge-label { margin-top: 4px; font-size: 13px; font-weight: 600; color: #8A7A5C; }
+  .gauge-count { font-size: calc(28px * var(--text)); font-weight: 800; color: #1F4A3D; line-height: 1; }
+  .gauge-label { margin-top: 4px; font-size: calc(13px * var(--text)); font-weight: 600; color: #8A7A5C; }
   .avatar-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -363,7 +382,7 @@
   .avatar.is-on .avatar-mark { background: #4C8763; }
   .avatar-name {
     margin-top: 6px;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
     font-weight: 600;
     color: #9A8E6E;
     text-align: center;
@@ -379,21 +398,21 @@
     border-radius: 18px;
     background: linear-gradient(135deg, #4C8763, #1F4A3D);
     color: white;
-    font-size: 20px;
+    font-size: calc(20px * var(--text));
     font-weight: 800;
     cursor: pointer;
   }
   .checkin-go.is-done { background: linear-gradient(135deg, #9CC0A8, #7FAF8C); cursor: pointer; }
   .checkin-go:disabled { opacity: 0.72; }
-  .checkin-remain { margin: 14px 0 0; text-align: center; color: #8A7A5C; font-size: 15px; font-weight: 600; }
+  .checkin-remain { margin: 14px 0 0; text-align: center; color: #8A7A5C; font-size: calc(15px * var(--text)); font-weight: 600; }
   .checkin-remain.is-all { color: #E4732C; font-weight: 700; }
-  .checkin-sync { margin: 8px 0 0; text-align: center; color: #B0A480; font-size: 13px; font-weight: 600; }
+  .checkin-sync { margin: 8px 0 0; text-align: center; color: #B0A480; font-size: calc(13px * var(--text)); font-weight: 600; }
   .checkin-sync.is-error { color: #E4732C; }
   .checkin-result { margin: 12px 16px 0; text-align: center; }
   .journey-card { margin: 16px 16px 0; padding: 16px; }
-  .journey-card h2.say-title { margin: 0 0 14px; color: #1F4A3D; font-size: 22px; font-weight: 900; line-height: 1.3; }
-  .journey-card .say-hint { margin: 0 0 16px; color: #9A8E6E; font-size: 15px; font-weight: 600; line-height: 1.5; }
-  .journey-label { margin: 0 0 8px; color: #8A7A5C; font-size: 14px; font-weight: 800; }
+  .journey-card h2.say-title { margin: 0 0 14px; color: #1F4A3D; font-size: calc(22px * var(--text)); font-weight: 900; line-height: 1.3; }
+  .journey-card .say-hint { margin: 0 0 16px; color: #9A8E6E; font-size: calc(15px * var(--text)); font-weight: 600; line-height: 1.5; }
+  .journey-label { margin: 0 0 8px; color: #8A7A5C; font-size: calc(14px * var(--text)); font-weight: 800; }
   .journey-card .phrase-grid { margin-top: 0; }
   .journey-card .phrase-grid button {
     min-height: 48px;
@@ -403,13 +422,13 @@
     border-radius: 12px;
     background: white;
     color: #26332C;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
     font-weight: 700;
   }
   .journey-card .phrase-grid button.is-open { background: #1F4A3D; color: white; border-color: transparent; }
-  .journey-card .composer textarea { min-height: 72px; padding: 12px 14px; border-radius: 12px; border: 1px solid #DCD3B8; font-size: 16px; line-height: 1.5; }
+  .journey-card .composer textarea { min-height: 72px; padding: 12px 14px; border-radius: 12px; border: 1px solid #DCD3B8; font-size: calc(16px * var(--text)); line-height: 1.5; }
   .say-send, .ann-send { width: 100%; border: 0; border-radius: 12px; font-weight: 800; }
-  .say-send { margin-top: 10px; padding: 12px 0; background: #4C8763; color: white; font-size: 16px; }
+  .say-send { margin-top: 10px; padding: 12px 0; background: #4C8763; color: white; font-size: calc(16px * var(--text)); }
   .ann-open {
     width: 100%;
     margin-top: 12px;
@@ -418,7 +437,7 @@
     border-radius: 12px;
     background: white;
     color: #26332C;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
     font-weight: 700;
   }
   .ann-actions { display: flex; gap: 8px; }
@@ -430,41 +449,41 @@
     border-radius: 12px;
     background: white;
     color: #8A7A5C;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
     font-weight: 700;
   }
-  .ann-actions .ann-send { flex: 2; width: auto; margin-top: 10px; padding: 10px 0; background: #E8B34A; color: #4A3617; font-size: 15px; }
-  .journey-card .empty-copy { margin: 0 0 16px; color: #9A8E6E; font-size: 15px; font-weight: 600; line-height: 1.5; }
+  .ann-actions .ann-send { flex: 2; width: auto; margin-top: 10px; padding: 10px 0; background: #E8B34A; color: #4A3617; font-size: calc(15px * var(--text)); }
+  .journey-card .empty-copy { margin: 0 0 16px; color: #9A8E6E; font-size: calc(15px * var(--text)); font-weight: 600; line-height: 1.5; }
   .say-list li.say-row { display: block; padding: 6px 0; border-top: 0; border-bottom: 1px solid #F0EAD8; }
-  .say-line { font-size: 13px; line-height: 1.45; color: #8A7A5C; overflow-wrap: anywhere; }
+  .say-line { font-size: calc(13px * var(--text)); line-height: 1.45; color: #8A7A5C; overflow-wrap: anywhere; }
   .say-who { font-weight: 700; color: #8A7A5C; }
   .say-row.is-mine .say-who { color: #1F4A3D; }
   .say-body { color: #26332C; }
-  .say-when { margin-left: 6px; font-size: 11px; color: #B0A480; font-weight: 600; }
+  .say-when { margin-left: 6px; font-size: calc(11px * var(--text)); color: #B0A480; font-weight: 600; }
   .ann-block { margin-top: 24px; padding-top: 18px; border-top: 1px solid #F0EAD8; }
-  .ann-title { margin: 0 0 10px; color: #1F4A3D; font-size: 18px; font-weight: 800; }
+  .ann-title { margin: 0 0 10px; color: #1F4A3D; font-size: calc(18px * var(--text)); font-weight: 800; }
   .ann-latest-card { padding: 12px 14px; border-radius: 14px; background: #FDF6E3; border: 1px solid #E8D5A0; }
-  .ann-body { margin: 0; color: #26332C; font-size: 16px; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
-  .ann-when { margin: 8px 0 0; font-size: 11px; color: #B0A480; font-weight: 600; }
+  .ann-body { margin: 0; color: #26332C; font-size: calc(16px * var(--text)); font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .ann-when { margin: 8px 0 0; font-size: calc(11px * var(--text)); color: #B0A480; font-weight: 600; }
   .ann-history { max-height: 240px; overflow: auto; }
   .ann-history li { display: block; margin-top: 8px; padding: 10px 12px; border: 1px solid #F0EAD8; border-radius: 12px; background: #F3E9D2; }
-  .stage-title { margin: 6px 0 0; color: #1F4A3D; font-size: 22px; font-weight: 800; line-height: 1.3; }
-  .stage-meta { margin: 4px 0 0; color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.45; }
-  .plan-kicker { margin: 8px 0 0; color: #B0A480; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
-  .next-time { margin: 0; color: #1F4A3D; font-size: 24px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
-  .next-place { margin: 4px 0 0; color: #26332C; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+  .stage-title { margin: 6px 0 0; color: #1F4A3D; font-size: calc(22px * var(--text)); font-weight: 800; line-height: 1.3; }
+  .stage-meta { margin: 4px 0 0; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 600; line-height: 1.45; }
+  .plan-kicker { margin: 8px 0 0; color: #B0A480; font-size: calc(11px * var(--text)); font-weight: 700; letter-spacing: 0.3px; }
+  .next-time { margin: 0; color: #1F4A3D; font-size: calc(24px * var(--text)); font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+  .next-place { margin: 4px 0 0; color: #26332C; font-size: calc(16px * var(--text)); font-weight: 600; overflow-wrap: anywhere; }
   .plan-list { list-style: none; margin: 10px 0 0; padding: 0; }
   .plan-stop { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #F0EAD8; }
   .plan-mark { flex: 0 0 auto; line-height: 1.4; }
   .plan-meta { flex: 0 0 84px; min-width: 0; }
   .plan-meta .plan-kicker { margin: 0; }
-  .plan-kind { color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .plan-kind { color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
   .plan-body { flex: 1; min-width: 0; }
-  .plan-name { color: #26332C; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-  .plan-note { margin-top: 2px; color: #9A8E6E; font-size: 12px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-  .journey-sync { margin: 16px 0 0; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.45; }
+  .plan-name { color: #26332C; font-size: calc(15px * var(--text)); font-weight: 600; overflow-wrap: anywhere; }
+  .plan-note { margin-top: 2px; color: #9A8E6E; font-size: calc(12px * var(--text)); font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .journey-sync { margin: 16px 0 0; text-align: center; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 600; line-height: 1.45; }
   .journey-sync.is-error { color: #E4732C; }
-  h2.page-title { margin: 18px 16px 0; color: #1F4A3D; font-size: 17px; font-weight: 800; }
+  h2.page-title { margin: 18px 16px 0; color: #1F4A3D; font-size: calc(17px * var(--text)); font-weight: 800; }
   .card.map-stage { margin: 16px 16px 0; padding: 0; overflow: hidden; }
   .route-map { padding: 16px 16px 8px; background: linear-gradient(180deg, #FBF6EC 0%, #E7F0E4 100%); }
   .route-node { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -478,20 +497,20 @@
     flex: 0 0 auto;
     background: #1F4A3D;
     color: #FBF6EC;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
     font-weight: 800;
   }
-  .route-label { color: #26332C; font-size: 15px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+  .route-label { color: #26332C; font-size: calc(15px * var(--text)); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
   .route-join { width: 2px; height: 12px; margin-left: 13px; background: #4C8763; }
-  .map-confirm { margin: 0; padding: 8px 16px 14px; text-align: center; color: #E4732C; font-size: 15px; font-weight: 800; background: #FBF6EC; }
+  .map-confirm { margin: 0; padding: 8px 16px 14px; text-align: center; color: #E4732C; font-size: calc(15px * var(--text)); font-weight: 800; background: #FBF6EC; }
   .map-stage .stop-status { margin: 0; padding: 0 16px 14px; background: #FBF6EC; }
   .card.map-card { margin: 16px 16px 0; padding: 14px 16px; }
   .map-row { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
   .map-icon { flex: 0 0 auto; font-size: 22px; line-height: 1.2; }
   .map-body { flex: 1; min-width: 0; }
-  .map-place { margin: 2px 0 0; color: #26332C; font-size: 17px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
-  .map-desc { margin: 4px 0 0; color: #26332C; font-size: 15px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
-  .map-note { margin: 4px 0 0; color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+  .map-place { margin: 2px 0 0; color: #26332C; font-size: calc(17px * var(--text)); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+  .map-desc { margin: 4px 0 0; color: #26332C; font-size: calc(15px * var(--text)); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+  .map-note { margin: 4px 0 0; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
   .map-nav {
     display: inline-block;
     margin-top: 10px;
@@ -500,14 +519,14 @@
     border-radius: 999px;
     background: #4C8763;
     color: white;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
     font-weight: 700;
     opacity: 0.55;
     cursor: not-allowed;
   }
   a.map-nav.is-ready { opacity: 1; cursor: pointer; text-decoration: none; }
   .map-stage .map-nav { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; }
-  .map-fuel-note { margin: 8px 16px 0; color: #8A7A5C; font-size: 13px; font-weight: 700; line-height: 1.45; }
+  .map-fuel-note { margin: 8px 16px 0; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 700; line-height: 1.45; }
   .card.badge-card { margin: 16px 16px 0; padding: 16px; }
   .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 18px; justify-items: center; }
   .badge { position: relative; display: flex; flex-direction: column; align-items: center; width: 78px; }
@@ -524,7 +543,7 @@
     opacity: 0.4;
   }
   .badge.is-on .badge-icon { background: #FDF1D6; border-color: #E8B34A; opacity: 1; }
-  .badge-label { margin-top: 6px; font-size: 13px; font-weight: 700; text-align: center; line-height: 1.35; color: #9A8E6E; overflow-wrap: anywhere; }
+  .badge-label { margin-top: 6px; font-size: calc(13px * var(--text)); font-weight: 700; text-align: center; line-height: 1.35; color: #9A8E6E; overflow-wrap: anywhere; }
   .badge.is-on .badge-label { color: #1F4A3D; }
   .badge-note {
     position: absolute;
@@ -543,12 +562,12 @@
     color: #FBF6EC;
     background: linear-gradient(135deg, #1F4A3D, #4C8763);
   }
-  .review-score-kicker { margin: 0; font-size: 14px; font-weight: 700; opacity: 0.9; }
-  .review-score-title { margin: 6px 0 0; font-size: 22px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
-  .review-score-note { margin: 10px 0 0; font-size: 14px; font-weight: 700; line-height: 1.55; opacity: 0.95; }
+  .review-score-kicker { margin: 0; font-size: calc(14px * var(--text)); font-weight: 700; opacity: 0.9; }
+  .review-score-title { margin: 6px 0 0; font-size: calc(22px * var(--text)); font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+  .review-score-note { margin: 10px 0 0; font-size: calc(14px * var(--text)); font-weight: 700; line-height: 1.55; opacity: 0.95; }
   .card.review-slot, .card.review-board { margin: 16px 16px 0; padding: 16px; }
-  .review-slot-note { margin: 8px 0 0; color: #26332C; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
-  .review-diff { margin: 14px 0 0; color: #1F4A3D; font-size: 18px; font-weight: 800; text-align: center; }
+  .review-slot-note { margin: 8px 0 0; color: #26332C; font-size: calc(15px * var(--text)); font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+  .review-diff { margin: 14px 0 0; color: #1F4A3D; font-size: calc(18px * var(--text)); font-weight: 800; text-align: center; }
   .review-diff:first-of-type { margin-top: 12px; }
   .review-rank { list-style: none; margin: 8px 0 0; padding: 0; }
   .review-rank li {
@@ -559,29 +578,30 @@
     padding: 7px 4px;
     border-top: 1px solid rgba(31, 74, 61, 0.16);
     color: #26332C;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
   }
-  .review-rank li.empty { display: block; color: #8A7A5C; font-size: 13px; font-weight: 600; }
+  .review-rank li.empty { display: block; color: #8A7A5C; font-size: calc(13px * var(--text)); font-weight: 600; }
   .card.review-finale {
     margin: 16px 16px 0;
     padding: 22px 16px 20px;
     text-align: center;
     background: linear-gradient(180deg, #FFF8E4 0%, #FDF1D6 100%);
   }
-  .review-next { margin: 0; font-size: 13px; font-weight: 600; color: #8A7A5C; line-height: 1.5; }
-  .review-hope { margin: 8px 0 0; color: #1F4A3D; font-size: 22px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
-  .review-vespa { display: block; width: 100%; max-width: 240px; height: 78px; margin: 12px auto 8px; }
-  .review-continued { margin: 0; font-size: 13px; font-weight: 600; color: #C4A574; font-style: italic; letter-spacing: 1.4px; }
-  .section-label { margin: 0; color: #8A7A5C; font-size: 16px; font-weight: 700; }
-  .place-name, .stop-name, .champ-name { margin: 4px 0 0; color: #26332C; font-size: 17px; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
+  .review-next { margin: 0; font-size: calc(13px * var(--text)); font-weight: 600; color: #8A7A5C; line-height: 1.5; }
+  .review-hope { margin: 8px 0 0; color: #1F4A3D; font-size: calc(22px * var(--text)); font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+  .review-vespa { display: block; width: 200px; max-width: 100%; height: auto; margin: 12px auto 8px; }
+  .title-vespa { height: 22px; width: auto; vertical-align: -5px; margin-right: 4px; }
+  .review-continued { margin: 0; font-size: calc(13px * var(--text)); font-weight: 600; color: #C4A574; font-style: italic; letter-spacing: 1.4px; }
+  .section-label { margin: 0; color: #8A7A5C; font-size: calc(16px * var(--text)); font-weight: 700; }
+  .place-name, .stop-name, .champ-name { margin: 4px 0 0; color: #26332C; font-size: calc(17px * var(--text)); font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
   .stop-kind, .stop-status, .say-meta, .empty-copy, .fine {
     margin: 4px 0 0;
     color: #8A7A5C;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     font-weight: 600;
     line-height: 1.45;
   }
-  .say-text { margin: 4px 0 0; color: #26332C; font-size: 16px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
+  .say-text { margin: 4px 0 0; color: #26332C; font-size: calc(16px * var(--text)); font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
   .people, .plain-list, .say-list { list-style: none; margin: 8px 0 0; padding: 0; }
   .people li, .plain-list li, .say-list li {
     display: flex;
@@ -610,7 +630,7 @@
     background: #1F4A3D;
     color: #FBF6EC;
     font-weight: 800;
-    font-size: 16px;
+    font-size: calc(16px * var(--text));
   }
   .phrase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
   .phrase-grid button {
@@ -644,7 +664,7 @@
     border-radius: 12px;
     border: 1px solid #DCD3B8;
     font: inherit;
-    font-size: 16px;
+    font-size: calc(16px * var(--text));
     resize: vertical;
   }
   .text-link {
@@ -684,7 +704,7 @@
     padding: 2px 0;
   }
   .tabbar .tab-icon { font-size: 18px; line-height: 1; opacity: 0.5; }
-  .tabbar .tab-label { font-size: 11px; font-weight: 600; line-height: 1.2; }
+  .tabbar .tab-label { font-size: 12px; font-weight: 600; line-height: 1.15; white-space: nowrap; }
   .tabbar button.is-active { color: #1F4A3D; }
   .tabbar button.is-active .tab-icon { opacity: 1; }
   .tabbar button.is-active .tab-label { font-weight: 800; }
@@ -796,29 +816,16 @@
           </div>
         </div>
         <div class="spacer"></div>
-        <svg class="vespa" viewBox="0 0 110 72" aria-hidden="true">
-          <ellipse cx="50" cy="64" rx="40" ry="4" fill="#C9BE9F" opacity="0.38" />
-          <circle cx="18" cy="54" r="10.5" fill="#3A3A3A" />
-          <circle cx="18" cy="54" r="4.6" fill="#FBF6EC" />
-          <circle cx="88" cy="54" r="10.5" fill="#3A3A3A" />
-          <circle cx="88" cy="54" r="4.6" fill="#FBF6EC" />
-          <path d="M14 50 Q14 34 26 30 H44 Q50 32 50 38 V50 Z" fill="#F2C463" />
-          <path d="M28 50 H78 L76 54 H30 Z" fill="#E8B34A" />
-          <path d="M68 50 L70 26 Q78 20 86 28 L90 50 Q80 54 68 50 Z" fill="#F2C463" />
-          <path d="M78 46 Q88 38 98 46 Q92 40 88 40 Q82 40 78 46 Z" fill="#E8B34A" />
-          <ellipse cx="34" cy="26" rx="13" ry="5.2" fill="#4A3617" />
-          <path d="M80 24 L88 44" stroke="#4A3617" stroke-width="2.8" stroke-linecap="round" />
-          <path d="M76 21 L94 14" stroke="#4A3617" stroke-width="2.6" stroke-linecap="round" />
-          <circle cx="95.5" cy="13" r="3" fill="#4A3617" />
-          <circle cx="84" cy="30" r="3.8" fill="#FBF6EC" stroke="#E8B34A" stroke-width="1.2" />
-        </svg>
+        <img class="vespa" src="vespa.png" alt="" />
       </div>
     </div>
   </header>
   <div class="info-strip" id="checkin-info">
     <article class="card">
       <p class="section-label">📍 集合地點</p>
-      <p class="place-name" id="meet-place">旗山俗ㄟ碳烤三明治</p>
+      <p class="place-name" id="meet-place">好食包</p>
+      <p class="meet-address" id="meet-address">高雄市旗山區瑞吉里中正路500號</p>
+      <a class="map-nav is-ready meet-nav" id="meet-nav" href="#" target="_blank" rel="noopener noreferrer">導航去集合地點</a>
     </article>
     <article class="card">
       <p class="section-label">⏰ 集合時間</p>
@@ -832,12 +839,16 @@
     <p class="who-confirm" id="who-confirm" hidden></p>
     <p class="who-hint" id="checkin-hint">請先在上方選擇你是誰。</p>
     <button type="button" class="who-switch" id="who-switch" hidden>換一個人</button>
-    <button type="button" class="text-btn reload-page" id="reload-page">重新整理</button>
+    <button type="button" class="text-btn reload-page" id="reload-page" hidden>重新整理</button>
     <a class="text-btn family-home" id="family-home" href="#" hidden>瓦特鎮家族／最新旅程</a>
+    <div id="push-note" hidden>
+      <p class="fine" id="push-status"></p>
+      <button type="button" id="push-enable" hidden>開啟通知</button>
+    </div>
   </div>
 
   <section id="panel-checkin" class="panel" data-tab="checkin">
-    <h2 class="page-title" id="checkin-trip-title">🏍️ 2026 達娜伊谷一日機車小旅行</h2>
+    <h2 class="page-title" id="checkin-trip-title"><img class="title-vespa" src="vespa.png" alt="">2026 達娜伊谷一日機車小旅行</h2>
     <article class="card checkin-card">
       <h2>🚀 出發報到</h2>
       <div id="depart-gauge"></div>
@@ -870,7 +881,7 @@
   <section id="panel-journey" class="panel" data-tab="journey" hidden>
     <article class="card journey-card" id="family-say">
       <h2 class="say-title">💬 家人想說</h2>
-      <p class="say-hint" id="say-hint">請先在上方選擇你是誰。選名字不是登入。</p>
+      <p class="say-hint" id="say-hint">請先在上方選擇你是誰。</p>
       <p class="empty-copy" id="say-empty">還沒有家人留言，可以直接跟家人說一句。</p>
       <p class="journey-label">快速說一句</p>
       <div class="phrase-grid" id="phrase-grid"></div>
@@ -879,39 +890,39 @@
         <button type="button" class="say-send" id="say-send">📤 傳送給全體家人</button>
       </div>
       <p class="fine" id="say-status"></p>
-      <button type="button" class="text-link" id="say-retry" hidden>再試一次，沿用同一次送出</button>
-      <div class="ann-block">
-        <h3 class="ann-title">📣 家族公告</h3>
-        <p class="fine" id="ann-note">一般家人只能閱讀。發布需要這次頁面的管理連結，重新整理後要重新打開。</p>
-        <div id="ann-latest"></div>
-        <button type="button" class="text-link" id="ann-history-toggle" hidden>查看歷史公告</button>
-        <ul class="say-list ann-history" id="ann-history" hidden></ul>
-        <button type="button" class="ann-open" id="ann-open" hidden>📣 發布新公告</button>
-        <div class="composer" id="ann-composer" hidden>
-          <textarea id="ann-text" maxlength="120" placeholder="輸入要通知全家的公告…"></textarea>
-          <div class="ann-actions">
-            <button type="button" class="ann-cancel" id="ann-cancel">取消</button>
-            <button type="button" class="ann-send" id="ann-send">📣 發送公告</button>
-          </div>
-          <p class="fine" id="ann-status"></p>
-          <button type="button" class="text-link" id="ann-retry" hidden>再試一次，沿用同一次發布</button>
-        </div>
-      </div>
+      <button type="button" class="text-link" id="say-retry" hidden>再試一次</button>
       <ul class="say-list" id="say-list"></ul>
-      <p class="journey-sync" id="journey-banner">行程尚未定稿。家人想說和公告會和其他手機一起更新；沒有連上時不會假裝已經送出。</p>
+      <p class="journey-sync" id="journey-banner" hidden></p>
     </article>
-    <article class="card journey-card">
+    <article class="card journey-card" id="family-ann">
+      <h2 class="ann-title">📣 家族公告</h2>
+      <p class="fine" id="ann-note">大家都能看。只有管理者可以發布。</p>
+      <div id="ann-latest"></div>
+      <button type="button" class="text-link" id="ann-history-toggle" hidden>查看以前的公告</button>
+      <ul class="say-list ann-history" id="ann-history" hidden></ul>
+      <button type="button" class="ann-open" id="ann-open" hidden>📣 發布新公告</button>
+      <div class="composer" id="ann-composer" hidden>
+        <textarea id="ann-text" maxlength="120" placeholder="寫給全家的公告…"></textarea>
+        <div class="ann-actions">
+          <button type="button" class="ann-cancel" id="ann-cancel">取消</button>
+          <button type="button" class="ann-send" id="ann-send">📣 發送公告</button>
+        </div>
+        <p class="fine" id="ann-status"></p>
+        <button type="button" class="text-link" id="ann-retry" hidden>再試一次</button>
+      </div>
+    </article>
+    <article class="card journey-card" id="journey-status" hidden>
       <p class="section-label">🏍️ 目前旅程狀態</p>
       <p class="stage-title" id="journey-stage">尚未出發</p>
-      <p class="stage-meta" id="journey-meet">集合地點：旗山俗ㄟ碳烤三明治</p>
+      <p class="stage-meta" id="journey-meet">集合地點：好食包</p>
       <p class="stage-meta" id="journey-time">集合時間：尚未確定</p>
       <p class="stage-meta" id="route-direction">方向：旗山集合，晚餐後各自返家。時間與道路都尚未定稿。</p>
     </article>
-    <article class="card journey-card">
+    <article class="card journey-card" id="journey-next" hidden>
       <p class="section-label">⏰ 下一個重要時間</p>
       <p class="plan-kicker">預定</p>
       <p class="next-time" id="journey-next-time">尚未確定</p>
-      <p class="next-place" id="journey-next-place">📍 旗山俗ㄟ碳烤三明治</p>
+      <p class="next-place" id="journey-next-place">📍 好食包</p>
     </article>
     <article class="card journey-card" id="plan-progress" hidden>
       <p class="section-label">🗺️ 旅程進度</p>
@@ -933,7 +944,7 @@
 
   <section id="panel-puzzle" class="panel" data-tab="puzzle" hidden>
   <div class="app">
-  <p class="sub">拼圖挑戰 · 這一局使用測試圖片</p>
+  <p class="sub">拼圖挑戰</p>
   <div class="actions" id="admin-actions" hidden>
     <button type="button" id="close-contest-open" hidden>結束比賽</button>
   </div>
@@ -967,7 +978,7 @@
         <div class="board" id="board" role="group" aria-label="拼圖"></div>
         <section class="done" id="done" hidden>
           <h2>拼好了</h2>
-          <img id="done-photo" alt="拼好的測試圖片" />
+          <img id="done-photo" alt="拼好的圖" />
           <p class="done-stats">時間 <b id="done-time">00:00</b> · 交換 <b id="done-moves">0</b> 次</p>
           <p class="done-status" id="done-status"></p>
           <button type="button" class="primary" id="submit-score" hidden>送出這次成績</button>
@@ -994,7 +1005,7 @@
     </section>
   </div>
   <p class="sync" id="sync-line"></p>
-  <p class="reserved">隔天的成就回饋留到下一階段。</p>
+  <p class="reserved" hidden>隔天的成就回饋留到下一階段。</p>
   </div>
   </section>
 
@@ -1014,6 +1025,8 @@
 
   <section id="panel-review" class="panel" data-tab="review" hidden>
     <h2 class="page-title">📖 旅行回顧</h2>
+    <p class="review-locked" id="review-locked">旅行回顧將在 12/27 開放 🎉</p>
+    <div id="review-body" hidden>
     <article class="card review-score">
       <p class="review-score-kicker">🛵 旅行成績單</p>
       <p class="review-score-title">📖 旅程成績單尚未產生</p>
@@ -1039,28 +1052,10 @@
     <article class="card review-finale">
       <p class="review-next">下一站，會是哪裡呢？</p>
       <p class="review-hope">🛵 期待環島序章！</p>
-      <svg class="review-vespa" viewBox="0 0 280 78" aria-hidden="true">
-        <path d="M10 70 C 86 78, 148 56, 200 40 S 258 18, 274 12" fill="none" stroke="#E6D7B4" stroke-width="9" stroke-linecap="round" />
-        <path d="M12 70 C 88 78, 150 56, 202 40 S 260 18, 276 12" fill="none" stroke="#C9B88A" stroke-width="2.2" stroke-dasharray="5 8" stroke-linecap="round" />
-        <g transform="translate(38 12)">
-          <ellipse cx="50" cy="60" rx="40" ry="4" fill="#C9BE9F" opacity="0.38" />
-          <circle cx="18" cy="50" r="10.5" fill="#3A3A3A" />
-          <circle cx="18" cy="50" r="4.6" fill="#FBF6EC" />
-          <circle cx="88" cy="50" r="10.5" fill="#3A3A3A" />
-          <circle cx="88" cy="50" r="4.6" fill="#FBF6EC" />
-          <path d="M14 46 Q14 30 26 26 H44 Q50 28 50 34 V46 Z" fill="#F2C463" />
-          <path d="M28 46 H78 L76 50 H30 Z" fill="#E8B34A" />
-          <path d="M68 46 L70 22 Q78 16 86 24 L90 46 Q80 50 68 46 Z" fill="#F2C463" />
-          <path d="M78 42 Q88 34 98 42 Q92 36 88 36 Q82 36 78 42 Z" fill="#E8B34A" />
-          <ellipse cx="34" cy="22" rx="13" ry="5.2" fill="#4A3617" />
-          <path d="M80 20 L88 40" stroke="#4A3617" stroke-width="2.8" stroke-linecap="round" />
-          <path d="M76 17 L94 10" stroke="#4A3617" stroke-width="2.6" stroke-linecap="round" />
-          <circle cx="95.5" cy="9" r="3" fill="#4A3617" />
-          <circle cx="84" cy="26" r="3.8" fill="#FBF6EC" stroke="#E8B34A" stroke-width="1.2" />
-        </g>
-      </svg>
+      <img class="review-vespa" src="vespa.png" alt="" />
       <p class="review-continued">To be continued...</p>
     </article>
+    </div>
   </section>
 
   <nav class="tabbar" aria-label="主要分頁">
@@ -1073,7 +1068,7 @@
   </nav>
 </div>
 <dialog id="original">
-  <img id="original-photo" alt="這一局的測試圖片" />
+  <img id="original-photo" alt="拼圖原圖" />
   <button type="button" class="text-btn" id="close-original">關閉</button>
 </dialog>
 <dialog id="close-contest">
@@ -1088,22 +1083,22 @@
     </div>
   </form>
 </dialog>
-<script src="guard.js?build=6d1"></script>
-<script src="score.js?build=6d1"></script>
-<script src="config.js?build=6d1"></script>
-<script src="trip-data.js?build=6d1"></script>
-<script src="clock.js?build=6d1"></script>
-<script src="who.js?build=6d1"></script>
-<script src="checkin-view.js?build=6d1"></script>
-<script src="shell.js?build=6d1"></script>
+<script src="guard.js?build=6d2"></script>
+<script src="score.js?build=6d2"></script>
+<script src="config.js?build=6d2"></script>
+<script src="trip-data.js?build=6d2"></script>
+<script src="clock.js?build=6d2"></script>
+<script src="who.js?build=6d2"></script>
+<script src="checkin-view.js?build=6d2"></script>
+<script src="shell.js?build=6d2"></script>
 <script>
 (function () {
-  if (!window.DanayiguGuard || !DanayiguGuard.readyForPage("6d1") || !window.DanayiguScore || !window.DanayiguClock || !window.DANAYIGU_CONFIG || !window.DANAYIGU_TRIP || !window.DanayiguWho || !window.DanayiguCheckin) {
+  if (!window.DanayiguGuard || !DanayiguGuard.readyForPage("6d2") || !window.DanayiguScore || !window.DanayiguClock || !window.DANAYIGU_CONFIG || !window.DANAYIGU_TRIP || !window.DanayiguWho || !window.DanayiguCheckin) {
     if (window.DanayiguGuard) DanayiguGuard.fail("page");
     if (window.DanayiguShowReload) DanayiguShowReload();
     return;
   }
-  DanayiguGuard.claim("page", "6d1");
+  DanayiguGuard.claim("page", "6d2");
   var adminToken = "";
   try { sessionStorage.removeItem("danayigu-admin-link"); } catch (err) { /* 舊版暫存清不掉時，這個頁面也不會再讀它 */ }
   consumeAdminFragment();
@@ -1156,11 +1151,17 @@
 
   document.body.dataset.mode = source.mode;
   document.body.dataset.pollMs = String(source.pollMs);
-  document.getElementById("mode-line").textContent = source.mode === "live"
-    ? "已連接達娜伊谷試算表，排行榜會和其他手機一起更新。"
-    : (source.mode === "blocked"
-      ? source.reason
-      : "本機試玩。新的達娜伊谷試算表尚未建立，這個頁面不會改連雲林。成績只留在這個畫面。");
+  var modeLine = document.getElementById("mode-line");
+  if (source.mode === "live") {
+    modeLine.textContent = "";
+    modeLine.hidden = true;
+  } else if (source.mode === "blocked") {
+    modeLine.hidden = false;
+    modeLine.textContent = source.reason;
+  } else {
+    modeLine.hidden = false;
+    modeLine.textContent = "現在先試玩，不會連到雲林的資料。";
+  }
 
   function isLocalMockUrl(url) {
     return /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\/exec$/.test(url);
@@ -1309,6 +1310,7 @@
     var needsPerson = action === "checkin" || action === "clearCheckin" || action === "sendMessage" || action === "submitScore" || action === "closeContest";
     if (needsPerson && (!identityCommitted() || id !== whoId)) return "請先確認你是誰。這次沒有送出。";
     if (action === "postAnnouncement" && id && (!identityCommitted() || id !== whoId)) return "請先確認你是誰。這次沒有送出。";
+    if (action === "registerPush" && (!identityCommitted() || id !== whoId)) return "請先確認你是誰。這次沒有送出。";
     return "";
   }
 
@@ -1366,11 +1368,13 @@
     wrap.hidden = !showPicker;
     if (label) label.hidden = !showPicker;
     if (welcome) {
-      welcome.hidden = true;
+      welcome.hidden = !ready;
       welcome.textContent = ready ? ("嗨，" + personName(whoId) + "！準備出發囉 🛵") : "";
     }
     if (hint) hint.hidden = ready;
     if (switcher) switcher.hidden = true;
+    var homeLink = document.getElementById("family-home");
+    if (homeLink) homeLink.hidden = true;
     renderAdmin();
     try {
       window.dispatchEvent(new CustomEvent("danayigu-who"));
@@ -1864,13 +1868,14 @@
   }
 
   function markSync(ok) {
-    var now = new Date();
-    var stamp = (now.getHours() < 10 ? "0" : "") + now.getHours() + ":" +
-      (now.getMinutes() < 10 ? "0" : "") + now.getMinutes() + ":" +
-      (now.getSeconds() < 10 ? "0" : "") + now.getSeconds();
-    document.getElementById("sync-line").textContent = ok
-      ? ("排行榜每 " + (source.pollMs / 1000) + " 秒重整 · " + stamp)
-      : "排行榜這次沒有更新";
+    var syncLine = document.getElementById("sync-line");
+    if (ok) {
+      syncLine.textContent = "";
+      syncLine.hidden = true;
+    } else {
+      syncLine.hidden = false;
+      syncLine.textContent = "排行榜這次沒有更新";
+    }
   }
 
   function poll() {
@@ -1995,6 +2000,11 @@
     layout();
     render();
   });
+  window.addEventListener("danayigu-tab", function () {
+    var identityHint = document.getElementById("checkin-hint");
+    var identified = !!(whoState && whoState.mode === "ready" && whoId);
+    if (identityHint && identified) identityHint.hidden = true;
+  });
   window.addEventListener("danayigu-tab", function (event) {
     if (!event.detail || event.detail.tab !== "puzzle") return;
     if (!state.ready || state.solved || timing.clockOn) return;
@@ -2033,6 +2043,7 @@
     renderWho();
   });
   renderWho();
+  if (window.DanayiguRevealFocus) window.DanayiguRevealFocus();
   paintScores();
   if (source.mode === "blocked") {
     markSync(false);
@@ -2047,6 +2058,141 @@
     document.getElementById("error").hidden = false;
     hint.textContent = "圖片讀取失敗";
   }
+
+  var PUSH_PUBLIC_KEY = "BAlqllAupj_iyiZspGBj7x-bqvOY3po2ronD79XOCsFCv0Iw4gd0MO8iByLLnWeYFBp3V2lKuvApibdvRlIxcXU";
+
+  function pushNote(text, showButton) {
+    var note = document.getElementById("push-note");
+    var status = document.getElementById("push-status");
+    var button = document.getElementById("push-enable");
+    if (!note || !status || !button) return;
+    status.textContent = text || "";
+    note.hidden = !text;
+    button.hidden = !showButton;
+  }
+
+  function iosDevice() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  }
+
+  function standaloneApp() {
+    return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  }
+
+  function pushSupported() {
+    return (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")
+      && "serviceWorker" in navigator
+      && "PushManager" in window
+      && "Notification" in window;
+  }
+
+  function pushKeyBytes(value) {
+    var padding = "=".repeat((4 - (value.length % 4)) % 4);
+    var base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+    var raw = atob(base64);
+    var out = new Uint8Array(raw.length);
+    var i;
+    for (i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  function existingPushRegistration() {
+    var script = new URL("../service-worker.js", location.href).href;
+    return navigator.serviceWorker.register(script).then(function () {
+      return navigator.serviceWorker.ready;
+    });
+  }
+
+  function paintPush(status, button) {
+    if (status === "subscribed") pushNote("手機通知已開好，不用再訂一次。", false);
+    else if (status === "ios-hint") pushNote("iPhone 請用主畫面圖示打開，才能接收通知。", false);
+    else if (status === "denied") pushNote("通知目前是關閉的。請到系統設定允許這個主畫面圖示。", false);
+    else if (status === "idle") pushNote("這支手機還沒開啟通知。", true);
+    else if (status === "save-failed") pushNote("通知權限已開，這次還沒登記成功。", button !== false);
+    else pushNote("", false);
+  }
+
+  function watchPush() {
+    if (!pushSupported()) {
+      paintPush("hidden");
+      return;
+    }
+    if (iosDevice() && !standaloneApp()) {
+      paintPush("ios-hint");
+      return;
+    }
+    existingPushRegistration().then(function (reg) {
+      return reg.pushManager.getSubscription();
+    }).then(function (sub) {
+      paintPush(sub ? "subscribed" : (Notification.permission === "denied" ? "denied" : "idle"));
+    }).catch(function () {
+      paintPush("idle");
+    });
+  }
+
+  function savePushSubscription(subscription) {
+    var json = subscription.toJSON();
+    return requestTrip({
+      action: "registerPush",
+      id: whoId,
+      subscription: {
+        endpoint: json.endpoint,
+        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth }
+      },
+      userAgent: navigator.userAgent || "",
+      platform: iosDevice() ? "ios" : "other"
+    }).then(function (data) {
+      if (!data || data.ok !== true || !data.registered) {
+        paintPush("save-failed", true);
+        return;
+      }
+      paintPush("subscribed");
+    }).catch(function () {
+      paintPush("save-failed", true);
+    });
+  }
+
+  function enablePush() {
+    var button = document.getElementById("push-enable");
+    if (!button || button.hidden || button.disabled) return;
+    if (!identityCommitted()) {
+      pushNote("請先在上方選擇你是誰。", true);
+      return;
+    }
+    button.disabled = true;
+    existingPushRegistration().then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (sub) {
+        if (sub) return sub;
+        if (Notification.permission === "granted") {
+          return reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: pushKeyBytes(PUSH_PUBLIC_KEY)
+          });
+        }
+        return Notification.requestPermission().then(function (perm) {
+          if (perm !== "granted") {
+            paintPush(perm === "denied" ? "denied" : "idle");
+            return null;
+          }
+          return reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: pushKeyBytes(PUSH_PUBLIC_KEY)
+          });
+        });
+      });
+    }).then(function (sub) {
+      button.disabled = false;
+      if (!sub) return;
+      return savePushSubscription(sub);
+    }).catch(function () {
+      button.disabled = false;
+      paintPush("idle");
+    });
+  }
+
+  var pushEnable = document.getElementById("push-enable");
+  if (pushEnable) pushEnable.addEventListener("click", enablePush);
+  watchPush();
 
   probe(currentSrc).then(function (readySrc) {
     if (!readySrc && currentSrc !== FALLBACK) return probe(FALLBACK);

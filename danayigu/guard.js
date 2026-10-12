@@ -11,7 +11,7 @@
     });
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
-  var BUILD = "6d1";
+  var BUILD = "6d2";
   var FILES = ["score.js", "config.js", "trip-data.js", "clock.js", "who.js", "checkin-view.js", "shell.js", "page"];
 
   function firstMissing(ids, has) {

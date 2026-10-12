@@ -209,25 +209,27 @@
       checkinBanner.textContent = !live
         ? "目前沒有連上。按了也不會報到成功。"
         : (view.syncReady === false
-          ? "家族同步尚未開通。報到、留言和公告不會送出。拼圖排行榜仍可使用。"
+          ? "家族同步尚未開通。現在還不能報到。"
           : (view.stale
             ? "這次沒有同步到。下面是上次讀到的狀態。"
             : (view.syncReady === true
-              ? "報到會和其他手機一起更新。重新整理後會再向伺服器讀取。選擇姓名不是登入。"
+              ? ""
               : "正在讀取報到。")));
+      if (checkinBanner) checkinBanner.hidden = !checkinBanner.textContent;
     }
     if (journeyBanner) {
       var journeyReady = live && view.syncReady === true && !view.stale;
       journeyBanner.classList.toggle("is-error", !journeyReady);
-      journeyBanner.textContent = !live
-        ? "目前沒有連上。留言和公告按了也不會送出。"
-        : (view.syncReady === false
-          ? "家族同步尚未開通。留言和公告不會送出。"
-          : (view.stale
-            ? "這次沒有同步到。留言和公告先顯示上次讀到的內容。"
-            : (journeyReady
-              ? "行程尚未定稿。家人想說和公告會和其他手機一起更新。"
+      journeyBanner.textContent = journeyReady
+        ? ""
+        : (!live
+          ? "目前沒有連上。留言和公告按了也不會送出。"
+          : (view.syncReady === false
+            ? "現在還不能送出留言和公告。"
+            : (view.stale
+              ? "這次沒有同步到。先顯示上次讀到的內容。"
               : "正在讀取留言和公告。")));
+      journeyBanner.hidden = !journeyBanner.textContent;
     }
   }
 
@@ -238,11 +240,7 @@
     paintBlock("depart", who);
     paintBlock("home", who);
     var hint = document.getElementById("checkin-hint");
-    if (hint) {
-      hint.textContent = who
-        ? "現在選的是" + who.name + "。送出前會再確認。選名字不是登入。"
-        : "請先在上方選擇你是誰。";
-    }
+    if (hint && !who) hint.textContent = "請先在上方選擇你是誰。";
     renderBanners();
   }
 
@@ -300,7 +298,7 @@
       latest.appendChild(box);
       var older = view.announcements.slice(1);
       toggle.hidden = older.length === 0;
-      toggle.textContent = historyOpen ? "收合歷史公告" : "查看歷史公告";
+      toggle.textContent = historyOpen ? "收合以前的公告" : "查看以前的公告";
       history.hidden = !historyOpen || older.length === 0;
       older.forEach(function (item) {
         var row = el("li");
@@ -528,6 +526,7 @@
     if (checkinHint) checkinHint.hidden = key !== "checkin";
     if (key === "badge" || key === "review") renderMirrors();
     if (key === "badge") renderBadges();
+    applyReviewGate();
     try {
       window.dispatchEvent(new CustomEvent("danayigu-tab", { detail: { tab: key } }));
     } catch (err) { /* 沒有 CustomEvent 時，拼圖仍會在看得到的時候開始計時 */ }
@@ -538,6 +537,27 @@
     var tab = "";
     try { tab = new URLSearchParams(location.search).get("tab") || ""; } catch (err) { tab = ""; }
     return TABS.indexOf(tab) >= 0 ? tab : "";
+  }
+
+  function focusTarget() {
+    var focus = "";
+    var hash = String(location.hash || "");
+    try { focus = new URLSearchParams(location.search).get("focus") || ""; } catch (err) { focus = ""; }
+    if (hash === "#family-ann" || focus === "family-ann") return "family-ann";
+    if (hash === "#family-say" || focus === "family-say") return "family-say";
+    return "";
+  }
+
+  function revealFocus() {
+    var id = focusTarget();
+    var node = id ? document.getElementById(id) : null;
+    if (!node || (node.closest && node.closest("[hidden]"))) return;
+    function go() {
+      try { node.scrollIntoView({ block: "center", inline: "nearest" }); }
+      catch (err) { node.scrollIntoView(true); }
+    }
+    go();
+    requestAnimationFrame(go);
   }
 
   function rememberPuzzleTab() {
@@ -558,13 +578,9 @@
     return null;
   }
 
-  function askCopy(who, kind, mode) {
-    if (mode === "clear") {
-      var which = kind === "depart" ? "出發報到" : "到家報平安";
-      return "要取消" + who.name + "的" + which + "嗎？只會清掉這一個時間。";
-    }
-    if (kind === "depart") return "要幫" + who.name + "出發報到嗎？其他手機也會看到這個名字。選名字不是登入。";
-    return "要幫" + who.name + "到家報平安嗎？其他手機也會看到這個名字。選名字不是登入。";
+  function askCopy(who, kind) {
+    var which = kind === "depart" ? "出發報到" : "到家報平安";
+    return "要取消" + who.name + "的" + which + "嗎？只會清掉這一個時間。";
   }
 
   function syncBlockMessage() {
@@ -574,38 +590,16 @@
     return "";
   }
 
-  function openAsk(kind) {
-    var who = requireWho();
-    if (!who || busy) return;
-    var blocked = syncBlockMessage();
-    if (blocked) {
-      setCheckinStatus(blocked + "。報到維持原狀。");
-      return;
-    }
-    var mode = timeOf(kind, who.id) ? "clear" : "set";
-    ask = { kind: kind, mode: mode };
-    var other = kind === "depart" ? "home" : "depart";
-    var otherBox = document.getElementById(other + "-ask");
-    if (otherBox) otherBox.hidden = true;
-    var text = document.getElementById(kind + "-ask-text");
-    var yes = document.getElementById(kind + "-yes");
-    var box = document.getElementById(kind + "-ask");
-    if (text) text.textContent = askCopy(who, kind, mode);
-    if (yes) yes.textContent = mode === "clear" ? "確認取消" : "確認送出";
-    if (box) box.hidden = false;
-  }
-
-  function confirmAsk() {
-    if (busy || !ask) return;
-    var who = currentWho();
+  function submitCheckin(pending) {
+    if (busy || !pending || !pending.id) return;
     var sync = window.danayiguSync;
     var blocked = syncBlockMessage();
-    if (!who || blocked) {
+    if (!sync || blocked) {
       setCheckinStatus((blocked || "目前沒有連上，這次沒有送出") + "。報到維持原狀。");
       return;
     }
-    var pending = { kind: ask.kind, mode: ask.mode, id: who.id };
     busy = true;
+    hideAsks();
     renderCheckin();
     setCheckinStatus("正在送出…");
     var call = pending.mode === "clear"
@@ -618,7 +612,6 @@
         setCheckinStatus(((data && data.error) || "沒有送出") + "。報到維持原狀。");
         return;
       }
-      hideAsks();
       if (pending.mode === "clear") setCheckinStatus("已取消。只清掉這一個時間。");
       else setCheckinStatus(data.already ? "已經報到過了，時間沒有改。" : "已送出。其他手機也會看到。");
     }).catch(function () {
@@ -626,6 +619,42 @@
       renderCheckin();
       setCheckinStatus("不確定有沒有送出。請看名單，先不要再按一次。");
     });
+  }
+
+  function openAsk(kind) {
+    var who = requireWho();
+    if (!who || busy) return;
+    var blocked = syncBlockMessage();
+    if (blocked) {
+      setCheckinStatus(blocked + "。報到維持原狀。");
+      return;
+    }
+    var mode = timeOf(kind, who.id) ? "clear" : "set";
+    if (mode === "set") {
+      submitCheckin({ kind: kind, mode: mode, id: who.id });
+      return;
+    }
+    ask = { kind: kind, mode: mode, id: who.id };
+    var other = kind === "depart" ? "home" : "depart";
+    var otherBox = document.getElementById(other + "-ask");
+    if (otherBox) otherBox.hidden = true;
+    var text = document.getElementById(kind + "-ask-text");
+    var yes = document.getElementById(kind + "-yes");
+    var box = document.getElementById(kind + "-ask");
+    if (text) text.textContent = askCopy(who, kind);
+    if (yes) yes.textContent = "確認取消";
+    if (box) box.hidden = false;
+  }
+
+  function confirmAsk() {
+    if (busy || !ask || ask.mode !== "clear") return;
+    var who = currentWho();
+    var blocked = syncBlockMessage();
+    if (!who || who.id !== ask.id || blocked) {
+      setCheckinStatus((blocked || "目前沒有連上，這次沒有送出") + "。報到維持原狀。");
+      return;
+    }
+    submitCheckin({ kind: ask.kind, mode: "clear", id: who.id });
   }
 
   function sendText(text, reuse) {
@@ -705,12 +734,19 @@
       var input = document.getElementById("ann-text");
       if (input) input.value = "";
       renderAnnouncements();
-      setAnnStatus(data.duplicate ? "這次已經發布過，沒有再新增一則。" : "已發布。");
+      setAnnStatus(announceStatus(data));
     }).catch(function () {
       busy = false;
       renderAnnouncements();
       setAnnStatus("不確定有沒有發布。若要再試，會沿用同一次，不會變成兩則。");
     });
+  }
+
+  function announceStatus(data) {
+    if (data && data.duplicate) return "這次已經發布過，沒有再新增一則。";
+    if (data && data.push && data.push.skipped) return "已發布。這次手機通知沒有送出。";
+    if (data && data.push && data.push.skipped === false) return "已發布。家人會收到手機通知。";
+    return "已發布。";
   }
 
   function seenRequest(list, key) {
@@ -811,8 +847,8 @@
       var who = currentWho();
       if (sayHint) {
         sayHint.textContent = who
-          ? "現在選的是" + who.name + "。選名字不是登入。"
-          : "請先在上方選擇你是誰。選名字不是登入。";
+          ? "這句會以" + who.name + "的名字送出。"
+          : "請先在上方選擇你是誰。";
       }
     });
     window.addEventListener("hashchange", function () {
@@ -868,6 +904,15 @@
   if (brand && trip.brand) brand.textContent = trip.brand;
   if (tagline && trip.tagline) tagline.textContent = trip.tagline;
   if (meetPlace && trip.meeting) meetPlace.textContent = trip.meeting.place;
+  var meetAddress = document.getElementById("meet-address");
+  var meetNav = document.getElementById("meet-nav");
+  if (meetAddress && trip.meeting) meetAddress.textContent = trip.meeting.address || "";
+  if (meetNav && trip.meeting && trip.meeting.navReady && trip.meeting.navQuery) {
+    meetNav.href = "https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=" + encodeURIComponent(trip.meeting.navQuery);
+    meetNav.hidden = false;
+  } else if (meetNav) {
+    meetNav.hidden = true;
+  }
   if (meetTime && trip.meeting) meetTime.textContent = trip.meeting.timeText;
   if (direction) direction.textContent = "方向：" + (trip.direction || "尚未確定") + "。時間與道路都尚未定稿。";
   var mapDate = document.getElementById("map-date");
@@ -889,14 +934,28 @@
     var who = currentWho();
     if (sayHint) {
       sayHint.textContent = who
-        ? "現在選的是" + who.name + "。選名字不是登入。"
-        : "請先在上方選擇你是誰。選名字不是登入。";
+        ? "這句會以" + who.name + "的名字送出。"
+        : "請先在上方選擇你是誰。";
     }
     renderSays();
     renderMirrors();
   }
 
-  var SHELL_BUILD = "6d1";
+  var REVIEW_OPENS_AT = Date.parse("2026-12-27T00:00:00+08:00");
+
+  function reviewIsOpen(now) {
+    return Number(now) >= REVIEW_OPENS_AT;
+  }
+
+  function applyReviewGate(now) {
+    var open = reviewIsOpen(now == null ? Date.now() : now);
+    var locked = document.getElementById("review-locked");
+    var body = document.getElementById("review-body");
+    if (locked) locked.hidden = open;
+    if (body) body.hidden = !open;
+  }
+
+  var SHELL_BUILD = "6d2";
   var SHELL_NODES = ["who", "who-confirm", "ann-open", "depart-gauge", "home-gauge", "phrase-grid", "depart-button", "home-button", "depart-yes", "home-yes", "say-send", "ann-send", "submit-score", "close-confirm"];
 
   function pageBuild() {
@@ -980,7 +1039,9 @@
 
   var adminHash = /^#a=/.test(location.hash || "");
   show(adminHash ? "puzzle" : (tabFromQuery() || "checkin"), false);
+  if (!adminHash) revealFocus();
   if (adminHash) rememberPuzzleTab();
+  window.DanayiguRevealFocus = revealFocus;
   window.addEventListener("danayigu-who", syncIdentity);
   if (document.readyState === "complete") syncIdentity();
   else window.addEventListener("load", syncIdentity);

@@ -81,5 +81,5 @@
 });
 (function (root) {
   if (!root || !root.DanayiguGuard) return;
-  root.DanayiguGuard.claim("checkin-view.js", "6d1");
+  root.DanayiguGuard.claim("checkin-view.js", "6d2");
 })(typeof window !== "undefined" ? window : null);

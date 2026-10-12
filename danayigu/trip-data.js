@@ -12,9 +12,12 @@ window.DANAYIGU_TRIP = {
   dateText: "2026/12/26（六）",
   rideNote: "Google 地圖可能用汽車路線。出發前請確認機車可以走。",
   meeting: {
-    place: "旗山俗ㄟ碳烤三明治",
+    place: "好食包",
+    address: "高雄市旗山區瑞吉里中正路500號",
     time: null,
-    timeText: "尚未確定"
+    timeText: "尚未確定",
+    navQuery: "好食包 高雄市旗山區瑞吉里中正路500號",
+    navReady: true
   },
   direction: "旗山集合，晚餐後各自返家",
   destinationName: "達娜伊谷",
@@ -22,11 +25,11 @@ window.DANAYIGU_TRIP = {
   stops: [
     {
       key: "meet",
-      name: "旗山俗ㄟ碳烤三明治",
+      name: "好食包",
       kind: "集合出發",
       status: "confirmed",
-      address: "高雄市旗山區竹峰里中正路350號",
-      navQuery: "俗ㄆㄤˋ碳烤三明治 高雄市旗山區竹峰里中正路350號",
+      address: "高雄市旗山區瑞吉里中正路500號",
+      navQuery: "好食包 高雄市旗山區瑞吉里中正路500號",
       navReady: true
     },
     {
@@ -97,5 +100,5 @@ window.DANAYIGU_TRIP = {
 };
 (function (root) {
   if (!root || !root.DanayiguGuard) return;
-  root.DanayiguGuard.claim("trip-data.js", "6d1");
+  root.DanayiguGuard.claim("trip-data.js", "6d2");
 })(typeof window !== "undefined" ? window : null);

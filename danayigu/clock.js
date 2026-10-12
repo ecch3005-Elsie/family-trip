@@ -38,5 +38,5 @@
 });
 (function (root) {
   if (!root || !root.DanayiguGuard) return;
-  root.DanayiguGuard.claim("clock.js", "6d1");
+  root.DanayiguGuard.claim("clock.js", "6d2");
 })(typeof window !== "undefined" ? window : null);
