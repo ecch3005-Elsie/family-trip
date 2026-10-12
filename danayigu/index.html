@@ -222,23 +222,24 @@
   }
   .hero {
     position: relative;
-    min-height: 148px;
+    height: 135px;
     overflow: hidden;
     background: linear-gradient(180deg, #1F4A3D 0%, #4C8763 68%, #E8B34A 100%);
   }
   .hero svg.ridges { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .hero-copy { position: relative; padding: 12px 12px 18px; color: #FBF6EC; }
+  .hero-copy { position: absolute; top: 10px; left: 14px; right: 14px; color: #FBF6EC; }
   h1.hero-title {
     margin: 0;
     color: #FBF6EC;
     font-size: 18px;
+    font-weight: 800;
     line-height: 1.25;
     text-align: center;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   }
-  .hero-brand { display: flex; align-items: center; margin-top: 8px; min-width: 0; }
+  .hero-brand { display: flex; align-items: center; margin-top: 6px; min-width: 0; }
   .hero-brand .spacer { flex: 1; }
-  .brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand-lockup { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .logo-wrap {
     flex: 0 0 auto;
     width: 56px;
@@ -255,10 +256,12 @@
   .logo-wrap img { width: 46px; height: 46px; object-fit: contain; display: block; }
   .brand-text { text-align: left; min-width: 0; }
   .brand-text strong, .brand-text span { display: block; line-height: 1.3; overflow-wrap: anywhere; }
-  .brand-text strong { font-size: 16px; }
-  .brand-text span { margin-top: 2px; font-size: 14px; font-weight: 500; }
+  .brand-text strong { font-size: 16px; font-weight: 700; opacity: 0.98; }
+  .brand-text span { margin-top: 2px; font-size: 15px; font-weight: 500; opacity: 0.92; }
   .vespa { flex: 0 0 auto; width: 72px; height: 48px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25)); }
   .who-bar { padding: 10px 16px 0; }
+  .who-hint { margin: 6px 0 0; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 600; }
+  .who-hint[hidden] { display: none !important; }
   .who-label { margin: 0 0 6px; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 700; }
   .panel[hidden] { display: none !important; }
   .draft-banner, .card, .info-strip { margin: 12px 16px 0; }
@@ -281,6 +284,285 @@
     box-shadow: 0 6px 18px rgba(31, 74, 61, 0.10);
   }
   .card h2 { margin: 0; color: #1F4A3D; font-size: 18px; }
+  #checkin-info {
+    margin: -18px 16px 0;
+    position: relative;
+    z-index: 2;
+  }
+  #checkin-info[hidden] { display: none !important; }
+  #checkin-info .card {
+    border-radius: 16px;
+    padding: 10px 14px;
+    box-shadow: 0 8px 20px rgba(31, 74, 61, 0.18);
+  }
+  #checkin-info .place-name { margin-top: 2px; font-size: 17px; font-weight: 700; }
+  .checkin-card { margin: 16px 16px 0; padding: 16px; }
+  .checkin-card h2 { margin: 0 0 10px; font-size: 17px; font-weight: 800; }
+  .gauge { position: relative; width: 132px; height: 132px; margin: 0 auto; }
+  .gauge svg { display: block; }
+  .gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .gauge-count { font-size: 28px; font-weight: 800; color: #1F4A3D; line-height: 1; }
+  .gauge-label { margin-top: 4px; font-size: 13px; font-weight: 600; color: #8A7A5C; }
+  .avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 16px;
+    margin-top: 20px;
+    justify-items: center;
+  }
+  .avatar { display: flex; flex-direction: column; align-items: center; width: 62px; max-width: 100%; }
+  .avatar-face {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: #1F4A3D;
+    background: #F0EBDD;
+    border: 2px solid #DCD3B8;
+    opacity: 0.75;
+  }
+  .avatar.is-long .avatar-face { font-size: 17px; }
+  .avatar.is-on .avatar-face { background: #E4F1E1; border-color: #4C8763; opacity: 1; }
+  .avatar-mark {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #C9BE9F;
+    color: white;
+    border: 2px solid #FBF6EC;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .avatar.is-on .avatar-mark { background: #4C8763; }
+  .avatar-name {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #9A8E6E;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .avatar.is-on .avatar-name { color: #1F4A3D; }
+  .avatar.is-self .avatar-name { font-weight: 800; }
+  .checkin-go {
+    width: 100%;
+    margin-top: 22px;
+    padding: 16px 0;
+    border: 0;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #4C8763, #1F4A3D);
+    color: white;
+    font-size: 20px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .checkin-go.is-done { background: linear-gradient(135deg, #9CC0A8, #7FAF8C); cursor: pointer; }
+  .checkin-go:disabled { opacity: 0.72; }
+  .checkin-remain { margin: 14px 0 0; text-align: center; color: #8A7A5C; font-size: 15px; font-weight: 600; }
+  .checkin-remain.is-all { color: #E4732C; font-weight: 700; }
+  .checkin-sync { margin: 8px 0 0; text-align: center; color: #B0A480; font-size: 13px; font-weight: 600; }
+  .checkin-sync.is-error { color: #E4732C; }
+  .checkin-result { margin: 12px 16px 0; text-align: center; }
+  .journey-card { margin: 16px 16px 0; padding: 16px; }
+  .journey-card h2.say-title { margin: 0 0 14px; color: #1F4A3D; font-size: 22px; font-weight: 900; line-height: 1.3; }
+  .journey-card .say-hint { margin: 0 0 16px; color: #9A8E6E; font-size: 15px; font-weight: 600; line-height: 1.5; }
+  .journey-label { margin: 0 0 8px; color: #8A7A5C; font-size: 14px; font-weight: 800; }
+  .journey-card .phrase-grid { margin-top: 0; }
+  .journey-card .phrase-grid button {
+    min-height: 48px;
+    margin-top: 0;
+    padding: 12px 8px;
+    border: 1px solid #DCD3B8;
+    border-radius: 12px;
+    background: white;
+    color: #26332C;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .journey-card .phrase-grid button.is-open { background: #1F4A3D; color: white; border-color: transparent; }
+  .journey-card .composer textarea { min-height: 72px; padding: 12px 14px; border-radius: 12px; border: 1px solid #DCD3B8; font-size: 16px; line-height: 1.5; }
+  .say-send, .ann-send { width: 100%; border: 0; border-radius: 12px; font-weight: 800; }
+  .say-send { margin-top: 10px; padding: 12px 0; background: #4C8763; color: white; font-size: 16px; }
+  .ann-open {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 0;
+    border: 1px solid #DCD3B8;
+    border-radius: 12px;
+    background: white;
+    color: #26332C;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .ann-actions { display: flex; gap: 8px; }
+  .ann-cancel {
+    flex: 1;
+    margin-top: 10px;
+    padding: 10px 0;
+    border: 1px solid #DCD3B8;
+    border-radius: 12px;
+    background: white;
+    color: #8A7A5C;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .ann-actions .ann-send { flex: 2; width: auto; margin-top: 10px; padding: 10px 0; background: #E8B34A; color: #4A3617; font-size: 15px; }
+  .journey-card .empty-copy { margin: 0 0 16px; color: #9A8E6E; font-size: 15px; font-weight: 600; line-height: 1.5; }
+  .say-list li.say-row { display: block; padding: 6px 0; border-top: 0; border-bottom: 1px solid #F0EAD8; }
+  .say-line { font-size: 13px; line-height: 1.45; color: #8A7A5C; overflow-wrap: anywhere; }
+  .say-who { font-weight: 700; color: #8A7A5C; }
+  .say-row.is-mine .say-who { color: #1F4A3D; }
+  .say-body { color: #26332C; }
+  .say-when { margin-left: 6px; font-size: 11px; color: #B0A480; font-weight: 600; }
+  .ann-block { margin-top: 24px; padding-top: 18px; border-top: 1px solid #F0EAD8; }
+  .ann-title { margin: 0 0 10px; color: #1F4A3D; font-size: 18px; font-weight: 800; }
+  .ann-latest-card { padding: 12px 14px; border-radius: 14px; background: #FDF6E3; border: 1px solid #E8D5A0; }
+  .ann-body { margin: 0; color: #26332C; font-size: 16px; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .ann-when { margin: 8px 0 0; font-size: 11px; color: #B0A480; font-weight: 600; }
+  .ann-history { max-height: 240px; overflow: auto; }
+  .ann-history li { display: block; margin-top: 8px; padding: 10px 12px; border: 1px solid #F0EAD8; border-radius: 12px; background: #F3E9D2; }
+  .stage-title { margin: 6px 0 0; color: #1F4A3D; font-size: 22px; font-weight: 800; line-height: 1.3; }
+  .stage-meta { margin: 4px 0 0; color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.45; }
+  .plan-kicker { margin: 8px 0 0; color: #B0A480; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
+  .next-time { margin: 0; color: #1F4A3D; font-size: 24px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+  .next-place { margin: 4px 0 0; color: #26332C; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+  .plan-list { list-style: none; margin: 10px 0 0; padding: 0; }
+  .plan-stop { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #F0EAD8; }
+  .plan-mark { flex: 0 0 auto; line-height: 1.4; }
+  .plan-meta { flex: 0 0 84px; min-width: 0; }
+  .plan-meta .plan-kicker { margin: 0; }
+  .plan-kind { color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .plan-body { flex: 1; min-width: 0; }
+  .plan-name { color: #26332C; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .plan-note { margin-top: 2px; color: #9A8E6E; font-size: 12px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .journey-sync { margin: 16px 0 0; text-align: center; color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.45; }
+  .journey-sync.is-error { color: #E4732C; }
+  h2.page-title { margin: 18px 16px 0; color: #1F4A3D; font-size: 17px; font-weight: 800; }
+  .card.map-stage { margin: 16px 16px 0; padding: 0; overflow: hidden; }
+  .route-map { padding: 16px 16px 8px; background: linear-gradient(180deg, #FBF6EC 0%, #E7F0E4 100%); }
+  .route-node { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .route-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    background: #1F4A3D;
+    color: #FBF6EC;
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .route-label { color: #26332C; font-size: 15px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+  .route-join { width: 2px; height: 12px; margin-left: 13px; background: #4C8763; }
+  .map-confirm { margin: 0; padding: 8px 16px 14px; text-align: center; color: #E4732C; font-size: 15px; font-weight: 800; background: #FBF6EC; }
+  .map-stage .stop-status { margin: 0; padding: 0 16px 14px; background: #FBF6EC; }
+  .card.map-card { margin: 16px 16px 0; padding: 14px 16px; }
+  .map-row { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+  .map-icon { flex: 0 0 auto; font-size: 22px; line-height: 1.2; }
+  .map-body { flex: 1; min-width: 0; }
+  .map-place { margin: 2px 0 0; color: #26332C; font-size: 17px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+  .map-desc { margin: 4px 0 0; color: #26332C; font-size: 15px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+  .map-note { margin: 4px 0 0; color: #8A7A5C; font-size: 13px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+  .map-nav {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: #4C8763;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .map-fuel-note { margin: 8px 16px 0; color: #8A7A5C; font-size: 13px; font-weight: 700; line-height: 1.45; }
+  .card.badge-card { margin: 16px 16px 0; padding: 16px; }
+  .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 18px; justify-items: center; }
+  .badge { position: relative; display: flex; flex-direction: column; align-items: center; width: 78px; }
+  .badge-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: #F0EBDD;
+    border: 2px solid #DCD3B8;
+    opacity: 0.4;
+  }
+  .badge.is-on .badge-icon { background: #FDF1D6; border-color: #E8B34A; opacity: 1; }
+  .badge-label { margin-top: 6px; font-size: 13px; font-weight: 700; text-align: center; line-height: 1.35; color: #9A8E6E; overflow-wrap: anywhere; }
+  .badge.is-on .badge-label { color: #1F4A3D; }
+  .badge-note {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+  }
+  .card.review-score {
+    margin: 16px 16px 0;
+    padding: 24px 18px;
+    text-align: center;
+    color: #FBF6EC;
+    background: linear-gradient(135deg, #1F4A3D, #4C8763);
+  }
+  .review-score-kicker { margin: 0; font-size: 14px; font-weight: 700; opacity: 0.9; }
+  .review-score-title { margin: 6px 0 0; font-size: 22px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+  .review-score-note { margin: 10px 0 0; font-size: 14px; font-weight: 700; line-height: 1.55; opacity: 0.95; }
+  .card.review-slot, .card.review-board { margin: 16px 16px 0; padding: 16px; }
+  .review-slot-note { margin: 8px 0 0; color: #26332C; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+  .review-diff { margin: 14px 0 0; color: #1F4A3D; font-size: 18px; font-weight: 800; text-align: center; }
+  .review-diff:first-of-type { margin-top: 12px; }
+  .review-rank { list-style: none; margin: 8px 0 0; padding: 0; }
+  .review-rank li {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 7px 4px;
+    border-top: 1px solid rgba(31, 74, 61, 0.16);
+    color: #26332C;
+    font-size: 14px;
+  }
+  .review-rank li.empty { display: block; color: #8A7A5C; font-size: 13px; font-weight: 600; }
+  .card.review-finale {
+    margin: 16px 16px 0;
+    padding: 22px 16px 20px;
+    text-align: center;
+    background: linear-gradient(180deg, #FFF8E4 0%, #FDF1D6 100%);
+  }
+  .review-next { margin: 0; font-size: 13px; font-weight: 600; color: #8A7A5C; line-height: 1.5; }
+  .review-hope { margin: 8px 0 0; color: #1F4A3D; font-size: 22px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+  .review-vespa { display: block; width: 100%; max-width: 240px; height: 78px; margin: 12px auto 8px; }
+  .review-continued { margin: 0; font-size: 13px; font-weight: 600; color: #C4A574; font-style: italic; letter-spacing: 1.4px; }
   .section-label { margin: 0; color: #8A7A5C; font-size: 16px; font-weight: 700; }
   .place-name, .stop-name, .champ-name { margin: 4px 0 0; color: #26332C; font-size: 17px; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
   .stop-kind, .stop-status, .say-meta, .empty-copy, .fine {
@@ -333,6 +615,10 @@
     line-height: 1.3;
   }
   .phrase-grid button.is-open { background: #1F4A3D; color: #FBF6EC; border-color: transparent; }
+  .phrase-grid button:disabled, .say-send:disabled, .ann-send:disabled, .ann-open:disabled, .ann-cancel:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
   .nav-wait {
     border: 1px dashed #DCD3B8;
     background: #F7F1E4;
@@ -436,100 +722,115 @@
       </div>
     </div>
   </header>
+  <div class="info-strip" id="checkin-info">
+    <article class="card">
+      <p class="section-label">📍 集合地點</p>
+      <p class="place-name" id="meet-place">旗山俗ㄟ碳烤三明治</p>
+    </article>
+    <article class="card">
+      <p class="section-label">⏰ 集合時間</p>
+      <p class="place-name" id="meet-time">尚未確定</p>
+    </article>
+  </div>
   <div class="who-bar">
     <p class="who-label">你是誰</p>
     <div class="who" id="who" role="group" aria-label="你是誰"></div>
+    <p class="who-hint" id="checkin-hint">請先在上方選擇你是誰。</p>
   </div>
 
   <section id="panel-checkin" class="panel" data-tab="checkin">
-    <p class="draft-banner" id="checkin-banner">正在讀取報到。沒有連上之前，按了也不會算數。</p>
-    <div class="info-strip">
-      <article class="card">
-        <p class="section-label">📍 集合地點</p>
-        <p class="place-name" id="meet-place">旗山俗ㄟ碳烤三明治</p>
-      </article>
-      <article class="card">
-        <p class="section-label">⏰ 集合時間</p>
-        <p class="place-name" id="meet-time">尚未確定</p>
-      </article>
-    </div>
-    <article class="card">
+    <article class="card checkin-card">
       <h2>🚀 出發報到</h2>
-      <p class="fine" id="depart-count">這台手機 0/9</p>
-      <p class="fine" id="checkin-hint">請先在上方選擇你是誰。</p>
-      <p class="fine" id="checkin-status"></p>
-      <ul class="people" id="depart-list"></ul>
-      <button type="button" class="stack-button" id="depart-button">👋 我到啦！</button>
+      <div id="depart-gauge"></div>
+      <div class="avatar-grid" id="depart-list"></div>
+      <button type="button" class="checkin-go" id="depart-button">👋 我到啦！</button>
+      <p class="checkin-remain" id="depart-remain"></p>
+      <p class="checkin-sync" id="depart-sync"></p>
       <div id="depart-ask" class="ask" hidden>
         <p class="fine" id="depart-ask-text"></p>
         <button type="button" class="stack-button" id="depart-yes">確認送出</button>
         <button type="button" class="text-link" id="depart-no">先不要</button>
       </div>
     </article>
-    <article class="card">
-      <h2>🏠 到家報平安</h2>
-      <p class="fine" id="home-count">這台手機 0/9</p>
-      <ul class="people" id="home-list"></ul>
-      <button type="button" class="stack-button" id="home-button">🏠 到家啦！</button>
+    <article class="card checkin-card">
+      <h2>🏠 到家報到</h2>
+      <div id="home-gauge"></div>
+      <div class="avatar-grid" id="home-list"></div>
+      <button type="button" class="checkin-go" id="home-button">🏠 到家啦！</button>
+      <p class="checkin-remain" id="home-remain"></p>
+      <p class="checkin-sync" id="home-sync"></p>
       <div id="home-ask" class="ask" hidden>
         <p class="fine" id="home-ask-text"></p>
         <button type="button" class="stack-button" id="home-yes">確認送出</button>
         <button type="button" class="text-link" id="home-no">先不要</button>
       </div>
     </article>
+    <p class="fine checkin-result" id="checkin-status"></p>
   </section>
 
   <section id="panel-journey" class="panel" data-tab="journey" hidden>
-    <p class="draft-banner" id="journey-banner">行程尚未定稿。家人想說和公告會和其他手機一起更新；沒有連上時不會假裝已經送出。</p>
-    <article class="card">
-      <h2>🗺️ 預定順序</h2>
-      <p class="fine" id="route-direction">方向：逆時鐘。下面只列出預定順序。</p>
-      <ol class="plain-list" id="plan-list"></ol>
-    </article>
-    <article class="card">
-      <h2>💬 家人想說</h2>
-      <p class="fine" id="say-hint">請先在上方選擇你是誰。選名字不是登入。</p>
+    <article class="card journey-card" id="family-say">
+      <h2 class="say-title">💬 家人想說</h2>
+      <p class="say-hint" id="say-hint">請先在上方選擇你是誰。選名字不是登入。</p>
+      <p class="empty-copy" id="say-empty">還沒有家人留言，可以直接跟家人說一句。</p>
+      <p class="journey-label">快速說一句</p>
       <div class="phrase-grid" id="phrase-grid"></div>
       <div class="composer" id="say-custom" hidden>
         <textarea id="say-text" maxlength="80" placeholder="輸入想跟家人說的話…"></textarea>
-        <button type="button" class="stack-button" id="say-send">送出</button>
+        <button type="button" class="say-send" id="say-send">📤 傳送給全體家人</button>
       </div>
       <p class="fine" id="say-status"></p>
       <button type="button" class="text-link" id="say-retry" hidden>再試一次，沿用同一次送出</button>
-      <p class="empty-copy" id="say-empty">還沒有家人留言。</p>
-      <ul class="say-list" id="say-list"></ul>
-    </article>
-    <article class="card">
-      <h2>📣 家族公告</h2>
-      <p class="fine" id="ann-note">一般家人只能閱讀。發布需要這次頁面的管理連結，重新整理後要重新打開。</p>
-      <div id="ann-latest"></div>
-      <button type="button" class="text-link" id="ann-history-toggle" hidden>查看歷史公告</button>
-      <ul class="say-list" id="ann-history" hidden></ul>
-      <div class="composer" id="ann-composer" hidden>
-        <textarea id="ann-text" maxlength="120" placeholder="寫一則公告…"></textarea>
-        <button type="button" class="stack-button" id="ann-send">發布公告</button>
-        <p class="fine" id="ann-status"></p>
-        <button type="button" class="text-link" id="ann-retry" hidden>再試一次，沿用同一次發布</button>
+      <div class="ann-block">
+        <h3 class="ann-title">📣 家族公告</h3>
+        <p class="fine" id="ann-note">一般家人只能閱讀。發布需要這次頁面的管理連結，重新整理後要重新打開。</p>
+        <div id="ann-latest"></div>
+        <button type="button" class="text-link" id="ann-history-toggle" hidden>查看歷史公告</button>
+        <ul class="say-list ann-history" id="ann-history" hidden></ul>
+        <button type="button" class="ann-open" id="ann-open" hidden>📣 發布新公告</button>
+        <div class="composer" id="ann-composer" hidden>
+          <textarea id="ann-text" maxlength="120" placeholder="輸入要通知全家的公告…"></textarea>
+          <div class="ann-actions">
+            <button type="button" class="ann-cancel" id="ann-cancel">取消</button>
+            <button type="button" class="ann-send" id="ann-send">📣 發送公告</button>
+          </div>
+          <p class="fine" id="ann-status"></p>
+          <button type="button" class="text-link" id="ann-retry" hidden>再試一次，沿用同一次發布</button>
+        </div>
       </div>
+      <ul class="say-list" id="say-list"></ul>
+      <p class="journey-sync" id="journey-banner">行程尚未定稿。家人想說和公告會和其他手機一起更新；沒有連上時不會假裝已經送出。</p>
+    </article>
+    <article class="card journey-card">
+      <p class="section-label">🏍️ 目前旅程狀態</p>
+      <p class="stage-title" id="journey-stage">尚未出發</p>
+      <p class="stage-meta" id="journey-meet">集合地點：旗山俗ㄟ碳烤三明治</p>
+      <p class="stage-meta" id="journey-time">集合時間：尚未確定</p>
+      <p class="stage-meta" id="route-direction">方向：逆時鐘。時間與道路都尚未定稿。</p>
+    </article>
+    <article class="card journey-card">
+      <p class="section-label">⏰ 下一個重要時間</p>
+      <p class="plan-kicker">預定</p>
+      <p class="next-time" id="journey-next-time">尚未確定</p>
+      <p class="next-place" id="journey-next-place">📍 旗山俗ㄟ碳烤三明治</p>
+    </article>
+    <article class="card journey-card">
+      <p class="section-label">🗺️ 旅程進度</p>
+      <ol class="plan-list" id="plan-list"></ol>
     </article>
   </section>
 
   <section id="panel-map" class="panel" data-tab="map" hidden>
-    <p class="draft-banner">道路與站點還沒有定稿。這裡不提供導航，避免開到尚未確認的地點。</p>
-    <article class="card">
-      <h2>📍 逆時鐘路線</h2>
+    <h2 class="page-title">📍 旅行地圖</h2>
+    <article class="card map-stage">
+      <div class="route-map" id="route-map"></div>
+      <p class="map-confirm">路線確認中</p>
       <p class="stop-status" id="route-reference"></p>
-      <ol class="plain-list" id="route-list"></ol>
     </article>
-    <article class="card">
-      <h2>🧭 分段</h2>
-      <ol class="plain-list" id="leg-list"></ol>
-    </article>
-    <article class="card">
-      <h2>⛽ 加油站</h2>
-      <p class="fine">先列為規劃候選，不是已經決定的加油點。</p>
-      <ul class="plain-list" id="fuel-list"></ul>
-    </article>
+    <div id="route-list"></div>
+    <h2 class="page-title">⛽ 規劃候選</h2>
+    <p class="map-fuel-note">加油站候選，不是這次的必停站。</p>
+    <div id="fuel-list"></div>
   </section>
 
   <section id="panel-puzzle" class="panel" data-tab="puzzle" hidden>
@@ -600,23 +901,9 @@
   </section>
 
   <section id="panel-badge" class="panel" data-tab="badge" hidden>
-    <p class="draft-banner">旅行成就尚未接通，不會依報到或位置自動點亮。拼圖冠軍只反映這個頁面已經公布的結果。</p>
-    <article class="card">
-      <h2>🏆 旅行成就</h2>
-      <ul class="plain-list">
-        <li>
-          <div class="stop-name">全員出發</div>
-          <p class="stop-status">尚未接通。報到會同步，但這個成就不會自動點亮。</p>
-        </li>
-        <li>
-          <div class="stop-name">抵達達娜伊谷</div>
-          <p class="stop-status">尚未接通。沒有定位，也不會自行判斷已經抵達。</p>
-        </li>
-        <li>
-          <div class="stop-name">平安到家</div>
-          <p class="stop-status">尚未接通。到家會同步，但這個成就不會自動點亮。</p>
-        </li>
-      </ul>
+    <h2 class="page-title">🏆 旅程成就</h2>
+    <article class="card badge-card">
+      <div class="badge-grid" id="badge-grid"></div>
     </article>
     <article class="card">
       <h2>🧩 拼圖雙冠軍</h2>
@@ -628,21 +915,53 @@
   </section>
 
   <section id="panel-review" class="panel" data-tab="review" hidden>
-    <p class="draft-banner">旅行還沒有正式紀錄。成績回顧直接讀這個頁面上的排行榜，不會另寫一份。</p>
-    <article class="card">
-      <h2>📖 旅行紀錄</h2>
-      <p class="fine">下面是尚未定稿的預定順序，不是已經走完的路線。</p>
-      <ol class="plain-list" id="review-plan"></ol>
+    <h2 class="page-title">📖 旅行回顧</h2>
+    <article class="card review-score">
+      <p class="review-score-kicker">🛵 旅行成績單</p>
+      <p class="review-score-title">📖 旅程成績單尚未產生</p>
+      <p class="review-score-note">旅行結束後才會有完整回顧。出發或到家報到都不會提前產生這張成績單。</p>
     </article>
-    <article class="card">
-      <h2>🧩 成績回顧</h2>
-      <h3 class="section-label">3×3 冠軍</h3>
+    <article class="card review-slot">
+      <p class="section-label">👋 報到紀錄</p>
+      <p class="review-slot-note">旅行結束後才會列出家人。現在不會依報到自動產生。</p>
+    </article>
+    <article class="card review-slot">
+      <p class="section-label">🏆 解鎖成就</p>
+      <p class="review-slot-note">旅行結束後才會列出這趟成就。這裡不跟著九宮格提前點亮。</p>
+    </article>
+    <article class="card review-board">
+      <p class="section-label">🧩 拼圖排行榜</p>
+      <h3 class="review-diff">3×3</h3>
       <div id="review-champ-3"></div>
-      <ol class="plain-list" id="review-rank-3"></ol>
-      <h3 class="section-label">4×4 冠軍</h3>
+      <ol class="review-rank" id="review-rank-3"></ol>
+      <h3 class="review-diff">4×4</h3>
       <div id="review-champ-4"></div>
-      <ol class="plain-list" id="review-rank-4"></ol>
-      <p class="fine">隔天的成就回饋留到下一階段。</p>
+      <ol class="review-rank" id="review-rank-4"></ol>
+    </article>
+    <article class="card review-finale">
+      <p class="review-next">下一站，會是哪裡呢？</p>
+      <p class="review-hope">🛵 期待環島序章！</p>
+      <svg class="review-vespa" viewBox="0 0 280 78" aria-hidden="true">
+        <path d="M10 70 C 86 78, 148 56, 200 40 S 258 18, 274 12" fill="none" stroke="#E6D7B4" stroke-width="9" stroke-linecap="round" />
+        <path d="M12 70 C 88 78, 150 56, 202 40 S 260 18, 276 12" fill="none" stroke="#C9B88A" stroke-width="2.2" stroke-dasharray="5 8" stroke-linecap="round" />
+        <g transform="translate(38 12)">
+          <ellipse cx="50" cy="60" rx="40" ry="4" fill="#C9BE9F" opacity="0.38" />
+          <circle cx="18" cy="50" r="10.5" fill="#3A3A3A" />
+          <circle cx="18" cy="50" r="4.6" fill="#FBF6EC" />
+          <circle cx="88" cy="50" r="10.5" fill="#3A3A3A" />
+          <circle cx="88" cy="50" r="4.6" fill="#FBF6EC" />
+          <path d="M14 46 Q14 30 26 26 H44 Q50 28 50 34 V46 Z" fill="#F2C463" />
+          <path d="M28 46 H78 L76 50 H30 Z" fill="#E8B34A" />
+          <path d="M68 46 L70 22 Q78 16 86 24 L90 46 Q80 50 68 46 Z" fill="#F2C463" />
+          <path d="M78 42 Q88 34 98 42 Q92 36 88 36 Q82 36 78 42 Z" fill="#E8B34A" />
+          <ellipse cx="34" cy="22" rx="13" ry="5.2" fill="#4A3617" />
+          <path d="M80 20 L88 40" stroke="#4A3617" stroke-width="2.8" stroke-linecap="round" />
+          <path d="M76 17 L94 10" stroke="#4A3617" stroke-width="2.6" stroke-linecap="round" />
+          <circle cx="95.5" cy="9" r="3" fill="#4A3617" />
+          <circle cx="84" cy="26" r="3.8" fill="#FBF6EC" stroke="#E8B34A" stroke-width="1.2" />
+        </g>
+      </svg>
+      <p class="review-continued">To be continued...</p>
     </article>
   </section>
 
@@ -676,6 +995,7 @@
 <script src="trip-data.js"></script>
 <script src="clock.js"></script>
 <script src="who.js"></script>
+<script src="checkin-view.js"></script>
 <script src="shell.js"></script>
 <script>
 (function () {
@@ -769,6 +1089,28 @@
     return kept.length ? "?" + kept.join("&") : "";
   }
 
+  function adminLandingQuery(search, forcePuzzle) {
+    var query = stripAdminQuery(search);
+    if (!forcePuzzle) return query;
+    var body = query.charAt(0) === "?" ? query.slice(1) : query;
+    var parts = body ? body.split("&") : [];
+    var kept = [];
+    var i;
+    var replaced = false;
+    for (i = 0; i < parts.length; i++) {
+      var pair = parts[i];
+      if (!pair) continue;
+      if (pair.split("=")[0] === "tab") {
+        kept.push("tab=puzzle");
+        replaced = true;
+      } else {
+        kept.push(pair);
+      }
+    }
+    if (!replaced) kept.push("tab=puzzle");
+    return "?" + kept.join("&");
+  }
+
   function looksLikeAdminToken(value) {
     return /^[A-Za-z0-9_-]{43,128}$/.test(String(value || ""));
   }
@@ -784,8 +1126,9 @@
     var search = String(location.search || "");
     var query = stripAdminQuery(search);
     var hadAdminHash = /^#a=/.test(decoded) || /^#a=/.test(hrefHash);
-    if (hadAdminHash || query !== search) {
-      try { history.replaceState(null, "", location.pathname + query); } catch (err) { /* 網址清不掉時仍不把權杖送到其他網址 */ }
+    var nextQuery = adminLandingQuery(search, hadAdminHash);
+    if (hadAdminHash || nextQuery !== search) {
+      try { history.replaceState(null, "", location.pathname + nextQuery); } catch (err) { /* 網址清不掉時仍不把權杖送到其他網址 */ }
     }
     if (matched) adminToken = matched[1];
   }
@@ -1492,6 +1835,7 @@
   if (source.mode === "blocked") {
     markSync(false);
     document.getElementById("sync-line").textContent = source.reason;
+    notifyTrip();
   } else {
     poll();
     setInterval(poll, source.pollMs);
