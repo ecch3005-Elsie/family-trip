@@ -1,35 +1,90 @@
-/* 達娜伊谷一日遊尚未定稿的行程。
- * 只放已確認的名稱，以及明確標成未確認的候選。
- * 不要在這裡補日期、時間、座標、里程或道路能不能走。
- * 不要放試算表網址或管理權杖。導航連結等定稿後再加。
+/* 2026/12/26 達娜伊谷一日遊的正式停靠順序。
+ * 導航只用已在 Google 地圖核對過的店名、地址或地點編號。
+ * 不放座標、里程、行車時間或道路名稱。
+ * 茶山、楠西不在這次導航裡。
+ * 不要放試算表網址或管理權杖。
  */
 window.DANAYIGU_TRIP = {
   title: "2026 達娜伊谷一日機車小旅行",
   brand: "瓦特鎮家族",
   tagline: "去哪裡？跟家人走就對了！",
   logo: "../logo.png",
+  dateText: "2026/12/26（六）",
+  rideNote: "Google 地圖可能用汽車路線。出發前請確認機車可以走。",
   meeting: {
     place: "旗山俗ㄟ碳烤三明治",
     time: null,
     timeText: "尚未確定"
   },
-  direction: "逆時鐘",
+  direction: "旗山集合，晚餐後各自返家",
   destinationName: "達娜伊谷",
+  fullRouteReady: false,
   stops: [
-    { key: "meet", name: "旗山俗ㄟ碳烤三明治", kind: "集合", status: "name-confirmed" },
-    { key: "jiaxian", name: "甲仙", kind: "預定途經", status: "unconfirmed" },
-    { key: "chashan", name: "茶山", kind: "預定途經", status: "unconfirmed" },
-    { key: "danayigu", name: "達娜伊谷", kind: "主要目的地", status: "name-confirmed" },
-    { key: "fanlu", name: "嘉義番路", kind: "預定途經", status: "unconfirmed" },
-    { key: "neimen", name: "內門", kind: "預定途經", status: "unconfirmed" }
+    {
+      key: "meet",
+      name: "旗山俗ㄟ碳烤三明治",
+      kind: "集合出發",
+      status: "confirmed",
+      address: "高雄市旗山區竹峰里中正路350號",
+      navQuery: "俗ㄆㄤˋ碳烤三明治 高雄市旗山區竹峰里中正路350號",
+      navReady: true
+    },
+    {
+      key: "jiaxian",
+      name: "台灣中油甲仙站",
+      kind: "加油站",
+      status: "required",
+      address: "高雄市甲仙區新興路55號",
+      navQuery: "台灣中油 甲仙站(直營、自助、充氣)",
+      placeId: "ChIJowIdYIRebjQRAegrfI4_bso",
+      navReady: true
+    },
+    {
+      key: "danayigu",
+      name: "達娜伊谷",
+      kind: "主要景點",
+      status: "confirmed",
+      address: "嘉義縣阿里山鄉山美村3鄰51號",
+      navQuery: "達娜伊谷自然生態公園 嘉義縣阿里山鄉山美村3鄰51號",
+      navReady: true
+    },
+    {
+      key: "houke",
+      name: "手工窯烤麵包－厚殼仔",
+      kind: "美食停靠",
+      status: "confirmed",
+      address: "嘉義縣番路鄉公田路口",
+      navQuery: "手工窯烤麵包-厚殼仔 嘉義縣番路鄉公田路口",
+      navReady: true
+    },
+    {
+      key: "wufeng",
+      name: "台灣中油吳鳳站",
+      kind: "加油站",
+      status: "required",
+      address: "嘉義縣中埔鄉檨仔林110號",
+      navQuery: "台灣中油 吳鳳站 嘉義縣中埔鄉檨仔林110號",
+      navReady: true
+    },
+    {
+      key: "neimen",
+      name: "台灣中油內門站",
+      kind: "加油站",
+      status: "required",
+      address: "高雄市內門區南屏路125號",
+      navQuery: "台灣中油 內門站(直營、自助、充氣) 高雄市內門區觀亭里南屏路125號",
+      navReady: true
+    },
+    {
+      key: "dinner",
+      name: "里港・飽渴夢餐酒館",
+      kind: "晚餐／最後一站",
+      status: "tentative",
+      address: "屏東縣里港鄉港路162號",
+      navQuery: "飽渴夢Restaurant 905屏東縣里港鄉港路162號",
+      navReady: true
+    }
   ],
-  fuelCandidates: [
-    { key: "fuel-jiaxian", name: "甲仙", status: "candidate" },
-    { key: "fuel-wufeng", name: "吳鳳", status: "candidate" },
-    { key: "fuel-nanxi", name: "楠西", status: "candidate" },
-    { key: "fuel-neimen", name: "內門", status: "candidate" }
-  ],
-  excludedReference: "有一張 Google Maps 截圖寫全程約 268 公里、騎乘約 6 小時。那是包含大樹個人往返的參考，不能標成家族共同路線的里程。",
   quickPhrases: [
     { key: "toilet", icon: "🚻", label: "上廁所" },
     { key: "fuel", icon: "⛽", label: "快沒油了" },

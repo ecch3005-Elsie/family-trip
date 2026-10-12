@@ -269,6 +269,7 @@
   .who-switch { display: block; margin: 2px auto 0; min-height: 32px; padding: 0 8px; border: 0; background: transparent; box-shadow: none; color: #8A7A5C; font-size: 13px; font-weight: 600; }
   .who[hidden], .who-label[hidden], .who-welcome[hidden], .who-switch[hidden] { display: none !important; }
   .reload-page, .family-home { display: block; margin: 8px auto 0; min-height: 44px; max-width: calc(100% - 8px); padding: 8px 14px; line-height: 1.35; text-align: center; text-decoration: none; }
+  .family-home[hidden] { display: none !important; }
   .panel[hidden] { display: none !important; }
   .draft-banner, .card, .info-strip { margin: 12px 16px 0; }
   .draft-banner {
@@ -295,7 +296,7 @@
     position: relative;
     z-index: 2;
   }
-  #checkin-info[hidden] { display: none !important; }
+  #checkin-info[hidden], #plan-progress[hidden] { display: none !important; }
   #checkin-info .card {
     border-radius: 16px;
     padding: 10px 14px;
@@ -504,6 +505,8 @@
     opacity: 0.55;
     cursor: not-allowed;
   }
+  a.map-nav.is-ready { opacity: 1; cursor: pointer; text-decoration: none; }
+  .map-stage .map-nav { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; }
   .map-fuel-note { margin: 8px 16px 0; color: #8A7A5C; font-size: 13px; font-weight: 700; line-height: 1.45; }
   .card.badge-card { margin: 16px 16px 0; padding: 16px; }
   .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 18px; justify-items: center; }
@@ -830,10 +833,11 @@
     <p class="who-hint" id="checkin-hint">請先在上方選擇你是誰。</p>
     <button type="button" class="who-switch" id="who-switch" hidden>換一個人</button>
     <button type="button" class="text-btn reload-page" id="reload-page">重新整理</button>
-    <a class="text-btn family-home" id="family-home" href="#">瓦特鎮家族／最新旅程</a>
+    <a class="text-btn family-home" id="family-home" href="#" hidden>瓦特鎮家族／最新旅程</a>
   </div>
 
   <section id="panel-checkin" class="panel" data-tab="checkin">
+    <h2 class="page-title" id="checkin-trip-title">🏍️ 2026 達娜伊谷一日機車小旅行</h2>
     <article class="card checkin-card">
       <h2>🚀 出發報到</h2>
       <div id="depart-gauge"></div>
@@ -901,7 +905,7 @@
       <p class="stage-title" id="journey-stage">尚未出發</p>
       <p class="stage-meta" id="journey-meet">集合地點：旗山俗ㄟ碳烤三明治</p>
       <p class="stage-meta" id="journey-time">集合時間：尚未確定</p>
-      <p class="stage-meta" id="route-direction">方向：逆時鐘。時間與道路都尚未定稿。</p>
+      <p class="stage-meta" id="route-direction">方向：旗山集合，晚餐後各自返家。時間與道路都尚未定稿。</p>
     </article>
     <article class="card journey-card">
       <p class="section-label">⏰ 下一個重要時間</p>
@@ -909,7 +913,7 @@
       <p class="next-time" id="journey-next-time">尚未確定</p>
       <p class="next-place" id="journey-next-place">📍 旗山俗ㄟ碳烤三明治</p>
     </article>
-    <article class="card journey-card">
+    <article class="card journey-card" id="plan-progress" hidden>
       <p class="section-label">🗺️ 旅程進度</p>
       <ol class="plan-list" id="plan-list"></ol>
     </article>
@@ -918,14 +922,13 @@
   <section id="panel-map" class="panel" data-tab="map" hidden>
     <h2 class="page-title">📍 旅行地圖</h2>
     <article class="card map-stage">
+      <p class="map-confirm" id="map-date"></p>
       <div class="route-map" id="route-map"></div>
-      <p class="map-confirm">路線確認中</p>
-      <p class="stop-status" id="route-reference"></p>
+      <p class="map-fuel-note" id="map-ride-note"></p>
+      <p class="map-note" id="full-route-note">完整路線尚未核對，請用每一段導航。</p>
+      <button type="button" class="map-nav" id="full-route" disabled>查看完整路線</button>
     </article>
     <div id="route-list"></div>
-    <h2 class="page-title">⛽ 規劃候選</h2>
-    <p class="map-fuel-note">加油站候選，不是這次的必停站。</p>
-    <div id="fuel-list"></div>
   </section>
 
   <section id="panel-puzzle" class="panel" data-tab="puzzle" hidden>
@@ -1363,11 +1366,11 @@
     wrap.hidden = !showPicker;
     if (label) label.hidden = !showPicker;
     if (welcome) {
-      welcome.hidden = !ready;
+      welcome.hidden = true;
       welcome.textContent = ready ? ("嗨，" + personName(whoId) + "！準備出發囉 🛵") : "";
     }
     if (hint) hint.hidden = ready;
-    if (switcher) switcher.hidden = !ready;
+    if (switcher) switcher.hidden = true;
     renderAdmin();
     try {
       window.dispatchEvent(new CustomEvent("danayigu-who"));

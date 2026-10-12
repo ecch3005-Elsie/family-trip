@@ -53,6 +53,9 @@
   }
 
   function placeStatus(item) {
+    if (item.status === "required") return "必停加油";
+    if (item.status === "tentative") return "晚餐暫定";
+    if (item.status === "confirmed") return "已確認";
     if (item.status === "name-confirmed") return "名稱已確認。時間、座標與實際道路都尚未定稿。";
     if (item.status === "candidate") return "規劃候選。尚未定稿，先不導航。";
     return "預定途經。尚未定稿，先不導航。";
@@ -313,9 +316,23 @@
   }
 
   function mapIcon(kind) {
-    if (kind === "集合") return "📍";
-    if (kind === "主要目的地") return "🌿";
+    if (kind === "集合出發" || kind === "集合") return "📍";
+    if (kind === "主要景點" || kind === "主要目的地") return "🌿";
+    if (kind === "加油站") return "⛽";
+    if (kind === "美食停靠") return "🍞";
+    if (String(kind || "").indexOf("晚餐") === 0) return "🍽️";
     return "📌";
+  }
+
+  function mapsSegment(fromStop, toStop) {
+    if (!fromStop || !toStop || !fromStop.navReady || !toStop.navReady) return "";
+    if (!fromStop.navQuery || !toStop.navQuery) return "";
+    var url = "https://www.google.com/maps/dir/?api=1&travelmode=driving";
+    url += "&origin=" + encodeURIComponent(fromStop.navQuery);
+    if (fromStop.placeId) url += "&origin_place_id=" + encodeURIComponent(fromStop.placeId);
+    url += "&destination=" + encodeURIComponent(toStop.navQuery);
+    if (toStop.placeId) url += "&destination_place_id=" + encodeURIComponent(toStop.placeId);
+    return url;
   }
 
   function fillRouteMap(host) {
@@ -330,22 +347,35 @@
     });
   }
 
-  function fillMapCards(host, items, numbered) {
+  function fillMapCards(host, items) {
     clear(host);
     items.forEach(function (item, index) {
       var card = el("article", "card map-card");
       var row = el("div", "map-row");
-      if (numbered) row.appendChild(el("div", "route-num", String(index + 1)));
-      row.appendChild(el("div", "map-icon", numbered ? mapIcon(item.kind) : "⛽"));
+      row.appendChild(el("div", "route-num", String(index + 1)));
+      row.appendChild(el("div", "map-icon", mapIcon(item.kind)));
       var body = el("div", "map-body");
-      body.appendChild(el("p", "section-label", numbered ? item.kind : "規劃候選"));
+      body.appendChild(el("p", "section-label", item.kind));
       body.appendChild(el("p", "map-place", item.name));
-      body.appendChild(el("p", "map-desc", numbered ? "路線確認中" : "規劃候選 · 路線確認中"));
-      body.appendChild(el("p", "map-note", placeStatus(item)));
-      var button = el("button", "map-nav", "🧭 路線確認中");
-      button.type = "button";
-      button.disabled = true;
-      body.appendChild(button);
+      body.appendChild(el("p", "map-desc", placeStatus(item)));
+      if (item.address) body.appendChild(el("p", "map-note", item.address));
+      if (index > 0) {
+        var fromStop = items[index - 1];
+        var href = mapsSegment(fromStop, item);
+        body.appendChild(el("p", "map-note", "從" + fromStop.name + "出發"));
+        if (href) {
+          var link = el("a", "map-nav is-ready", "🧭 導航到這裡");
+          link.href = href;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          body.appendChild(link);
+        } else {
+          var button = el("button", "map-nav", "🧭 導航確認中");
+          button.type = "button";
+          button.disabled = true;
+          body.appendChild(button);
+        }
+      }
       row.appendChild(body);
       card.appendChild(row);
       host.appendChild(card);
@@ -354,11 +384,10 @@
 
   function renderTripLists() {
     var route = document.getElementById("route-list");
-    var fuels = document.getElementById("fuel-list");
     var plan = document.getElementById("plan-list");
     var reviewPlan = document.getElementById("review-plan");
     fillRouteMap(document.getElementById("route-map"));
-    if (route) fillMapCards(route, trip.stops, true);
+    if (route) fillMapCards(route, trip.stops);
     if (reviewPlan) {
       clear(reviewPlan);
       trip.stops.forEach(function (stop, index) {
@@ -385,7 +414,6 @@
         plan.appendChild(row);
       });
     }
-    if (fuels) fillMapCards(fuels, trip.fuelCandidates || [], false);
   }
 
   function badgeOn(key) {
@@ -406,7 +434,7 @@
       ["photo", "📸", "家族合照", "原版要合照任務。這次沒有這項資料，先不解鎖。"],
       ["food", "🍜", "今日美食", "原版要美食任務。這次沒有這項資料，先不解鎖。"],
       ["dayComplete", "🌄", "今日旅程完成", "原版要當日完成任務。這次沒有這項資料，先不解鎖。"],
-      ["safeArrival", "🏠", "平安投宿", "原版要住宿任務。這次沒有這項資料，先不解鎖。"],
+      ["safeArrival", "🌿", "達娜伊谷達陣", "原版要住宿任務。這次沒有這項資料，先不解鎖。"],
       ["allHome", "🌙", "全員到家", "九位家人都有到家報到才點亮。"],
       ["star", "⭐", "今日之星", "原版要里程之星。拼圖冠軍不在這裡公布，先不解鎖。"]
     ].forEach(function (item) {
@@ -836,14 +864,16 @@
   var meetPlace = document.getElementById("meet-place");
   var meetTime = document.getElementById("meet-time");
   var direction = document.getElementById("route-direction");
-  var reference = document.getElementById("route-reference");
   if (title && trip.title) title.textContent = trip.title;
   if (brand && trip.brand) brand.textContent = trip.brand;
   if (tagline && trip.tagline) tagline.textContent = trip.tagline;
   if (meetPlace && trip.meeting) meetPlace.textContent = trip.meeting.place;
   if (meetTime && trip.meeting) meetTime.textContent = trip.meeting.timeText;
   if (direction) direction.textContent = "方向：" + (trip.direction || "尚未確定") + "。時間與道路都尚未定稿。";
-  if (reference && trip.excludedReference) reference.textContent = trip.excludedReference;
+  var mapDate = document.getElementById("map-date");
+  var rideNote = document.getElementById("map-ride-note");
+  if (mapDate) mapDate.textContent = trip.dateText || "";
+  if (rideNote) rideNote.textContent = trip.rideNote || "";
   var stageMeet = document.getElementById("journey-meet");
   var stageTime = document.getElementById("journey-time");
   var nextTime = document.getElementById("journey-next-time");
