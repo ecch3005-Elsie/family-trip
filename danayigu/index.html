@@ -675,6 +675,7 @@
 <script src="config.js"></script>
 <script src="trip-data.js"></script>
 <script src="clock.js"></script>
+<script src="who.js"></script>
 <script src="shell.js"></script>
 <script>
 (function () {
@@ -800,12 +801,13 @@
   }
 
   function readWho() {
-    try {
-      var saved = localStorage.getItem(WHO_KEY) || "";
-      return family.some(function (p) { return p.sheetId === saved; }) ? saved : "";
-    } catch (err) {
-      return "";
-    }
+    var stored = "";
+    try { stored = localStorage.getItem(WHO_KEY) || ""; } catch (err) { stored = ""; }
+    var decided = window.DanayiguWho
+      ? window.DanayiguWho.resolve(location.search, stored, family)
+      : { id: family.some(function (p) { return p.sheetId === stored; }) ? stored : "", persist: false };
+    if (decided.persist && decided.id) writeWho(decided.id);
+    return decided.id || "";
   }
 
   function writeWho(id) {
@@ -837,6 +839,9 @@
       wrap.appendChild(btn);
     });
     renderAdmin();
+    try {
+      window.dispatchEvent(new CustomEvent("danayigu-who"));
+    } catch (err) { /* 分頁提示更新不了時，送出仍會讀目前選到的人 */ }
   }
 
   function renderAdmin() {

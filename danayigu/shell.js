@@ -688,6 +688,7 @@
     }
     renderMirrors();
   }
+  window.addEventListener("danayigu-who", syncIdentity);
   if (document.readyState === "complete") syncIdentity();
   else window.addEventListener("load", syncIdentity);
 })();
