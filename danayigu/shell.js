@@ -17,6 +17,7 @@
   };
   var historyOpen = false;
   var customOpen = false;
+  var annFormOpen = false;
   var busy = false;
   var ask = null;
   var messageOutgoing = null;
@@ -115,16 +116,86 @@
     });
   }
 
-  function fillPeople(list, kind) {
+  function svgCircle(stroke, progress) {
+    var node = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    node.setAttribute("cx", "66");
+    node.setAttribute("cy", "66");
+    node.setAttribute("r", "54");
+    node.setAttribute("fill", "none");
+    node.setAttribute("stroke", stroke);
+    node.setAttribute("stroke-width", "12");
+    if (progress) {
+      node.setAttribute("stroke-linecap", "round");
+      node.setAttribute("stroke-dasharray", progress.dash + " " + progress.rest);
+      node.setAttribute("transform", "rotate(-90 66 66)");
+    }
+    return node;
+  }
+
+  function paintGauge(host, face, label) {
+    clear(host);
+    var wrap = el("div", "gauge");
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "132");
+    svg.setAttribute("height", "132");
+    svg.setAttribute("viewBox", "0 0 132 132");
+    svg.setAttribute("aria-hidden", "true");
+    svg.appendChild(svgCircle("#EAE0C6"));
+    svg.appendChild(svgCircle("#4C8763", face));
+    var center = el("div", "gauge-center");
+    center.appendChild(el("div", "gauge-count", face.label));
+    center.appendChild(el("div", "gauge-label", label));
+    wrap.appendChild(svg);
+    wrap.appendChild(center);
+    host.appendChild(wrap);
+  }
+
+  function fillAvatars(list, kind, who) {
+    if (!list) return;
     clear(list);
-    var onLabel = kind === "depart" ? "已出發" : "已到家";
     family().forEach(function (person) {
-      var at = timeOf(kind, person.sheetId);
-      var row = el("li", at ? "is-on" : "");
-      row.appendChild(el("span", "person", person.name));
-      row.appendChild(el("span", "state", at ? onLabel + " " + clockMs(at) : "尚未報到"));
-      list.appendChild(row);
+      var face = window.DanayiguCheckin.avatarFace(
+        person.initial,
+        !!timeOf(kind, person.sheetId),
+        !!(who && who.id === person.sheetId)
+      );
+      var item = el("div", "avatar" + (face.on ? " is-on" : "") + (face.self ? " is-self" : "") + (face.long ? " is-long" : ""));
+      if (face.self) item.setAttribute("aria-current", "true");
+      var ring = el("div", "avatar-face");
+      ring.appendChild(document.createTextNode(face.initial));
+      ring.appendChild(el("div", "avatar-mark", face.mark));
+      item.appendChild(ring);
+      item.appendChild(el("div", "avatar-name", person.name));
+      list.appendChild(item);
     });
+  }
+
+  function paintSync(kind) {
+    var node = document.getElementById(kind + "-sync");
+    if (!node) return;
+    var line = window.DanayiguCheckin.syncFace(view);
+    node.textContent = line.text;
+    node.classList.toggle("is-error", line.tone === "error");
+    node.classList.toggle("is-ok", line.ok);
+  }
+
+  function paintBlock(kind, who) {
+    var button = document.getElementById(kind + "-button");
+    var gauge = document.getElementById(kind + "-gauge");
+    if (!button || !gauge) return;
+    var selfOn = !!(who && timeOf(kind, who.id));
+    var face = window.DanayiguCheckin.blockFace(countKind(kind), kind, selfOn);
+    paintGauge(gauge, face, kind === "home" ? "已到家" : "已報到");
+    fillAvatars(document.getElementById(kind + "-list"), kind, who);
+    button.textContent = face.button;
+    button.classList.toggle("is-done", face.done);
+    button.disabled = busy;
+    var remain = document.getElementById(kind + "-remain");
+    if (remain) {
+      remain.textContent = face.remain;
+      remain.classList.toggle("is-all", face.all);
+    }
+    paintSync(kind);
   }
 
   function renderBanners() {
@@ -143,35 +214,32 @@
               : "正在讀取報到。")));
     }
     if (journeyBanner) {
+      var journeyReady = live && view.syncReady === true && !view.stale;
+      journeyBanner.classList.toggle("is-error", !journeyReady);
       journeyBanner.textContent = !live
-        ? "行程尚未定稿。目前沒有連上，留言和公告按了也不會送出。"
+        ? "目前沒有連上。留言和公告按了也不會送出。"
         : (view.syncReady === false
-          ? "行程尚未定稿。家族同步尚未開通，留言和公告不會送出。"
-          : "行程尚未定稿。家人想說和公告會和其他手機一起更新。");
+          ? "家族同步尚未開通。留言和公告不會送出。"
+          : (view.stale
+            ? "這次沒有同步到。留言和公告先顯示上次讀到的內容。"
+            : (journeyReady
+              ? "行程尚未定稿。家人想說和公告會和其他手機一起更新。"
+              : "正在讀取留言和公告。")));
     }
   }
 
   function renderCheckin() {
+    if (!window.DanayiguCheckin) return;
     var who = currentWho();
-    var departCount = document.getElementById("depart-count");
-    var homeCount = document.getElementById("home-count");
-    var departBtn = document.getElementById("depart-button");
-    var homeBtn = document.getElementById("home-button");
-    if (!departCount || !departBtn || !homeBtn) return;
-    departCount.textContent = "已報到 " + countKind("depart") + "/9";
-    homeCount.textContent = "已到家 " + countKind("home") + "/9";
-    fillPeople(document.getElementById("depart-list"), "depart");
-    fillPeople(document.getElementById("home-list"), "home");
-    var departOn = who && timeOf("depart", who.id);
-    var homeOn = who && timeOf("home", who.id);
-    departBtn.textContent = departOn ? "取消出發報到" : "👋 我到啦！";
-    homeBtn.textContent = homeOn ? "取消到家報到" : "🏠 到家啦！";
-    departBtn.disabled = busy;
-    homeBtn.disabled = busy;
-    document.getElementById("checkin-hint").textContent = who
-      ? "現在選的是" + who.name + "。送出前會再確認。選名字不是登入。"
-      : "請先在上方選擇你是誰。";
-    if (view.stale && !busy) setCheckinStatus("這次沒有同步到。下面是上次讀到的狀態。");
+    if (!document.getElementById("depart-button") || !document.getElementById("home-button")) return;
+    paintBlock("depart", who);
+    paintBlock("home", who);
+    var hint = document.getElementById("checkin-hint");
+    if (hint) {
+      hint.textContent = who
+        ? "現在選的是" + who.name + "。送出前會再確認。選名字不是登入。"
+        : "請先在上方選擇你是誰。";
+    }
     renderBanners();
   }
 
@@ -181,17 +249,27 @@
     var retry = document.getElementById("say-retry");
     if (!list) return;
     clear(list);
+    var who = currentWho();
     view.messages.forEach(function (item) {
-      var row = el("li");
-      row.appendChild(el("div", "say-meta", personName(item.personId) + " · " + clockMs(item.createdAtMs)));
-      row.appendChild(el("div", "say-text", item.text));
+      var mine = !!(who && who.id === item.personId);
+      var row = el("li", "say-row" + (mine ? " is-mine" : ""));
+      var line = el("div", "say-line");
+      line.appendChild(el("span", "say-who", personName(item.personId) + (mine ? "（我）" : "") + "："));
+      line.appendChild(el("span", "say-body", item.text));
+      line.appendChild(el("span", "say-when", clockMs(item.createdAtMs)));
+      row.appendChild(line);
       list.appendChild(row);
     });
     empty.hidden = view.messages.length > 0;
     document.getElementById("say-custom").hidden = !customOpen;
     if (retry) retry.hidden = !messageOutgoing;
+    var phraseButtons = document.querySelectorAll("#phrase-grid button");
+    Array.prototype.forEach.call(phraseButtons, function (button) {
+      button.disabled = busy;
+    });
+    var typed = document.getElementById("say-text");
     var send = document.getElementById("say-send");
-    if (send) send.disabled = busy;
+    if (send) send.disabled = busy || !String(typed && typed.value || "").trim();
   }
 
   function renderAnnouncements() {
@@ -199,81 +277,146 @@
     var history = document.getElementById("ann-history");
     var toggle = document.getElementById("ann-history-toggle");
     var composer = document.getElementById("ann-composer");
+    var opener = document.getElementById("ann-open");
     var retry = document.getElementById("ann-retry");
     if (!latest) return;
     clear(latest);
     clear(history);
-    if (composer) composer.hidden = !view.canPublish;
+    if (!view.canPublish) annFormOpen = false;
+    if (opener) opener.hidden = !view.canPublish || annFormOpen;
+    if (composer) composer.hidden = !view.canPublish || !annFormOpen;
     if (!view.announcements.length) {
-      latest.appendChild(el("p", "empty-copy", "尚無公告。"));
+      latest.appendChild(el("p", "empty-copy", "尚無公告"));
       toggle.hidden = true;
       history.hidden = true;
     } else {
       var head = view.announcements[0];
-      latest.appendChild(el("p", "say-text", head.text));
-      latest.appendChild(el("p", "say-meta", personName(head.authorId) + " · " + clockMs(head.createdAtMs)));
+      var box = el("div", "ann-latest-card");
+      box.appendChild(el("p", "ann-body", head.text));
+      box.appendChild(el("p", "ann-when", personName(head.authorId) + " · " + clockMs(head.createdAtMs)));
+      latest.appendChild(box);
       var older = view.announcements.slice(1);
       toggle.hidden = older.length === 0;
       toggle.textContent = historyOpen ? "收合歷史公告" : "查看歷史公告";
       history.hidden = !historyOpen || older.length === 0;
       older.forEach(function (item) {
         var row = el("li");
-        row.appendChild(el("div", "say-text", item.text));
-        row.appendChild(el("div", "say-meta", personName(item.authorId) + " · " + clockMs(item.createdAtMs)));
+        row.appendChild(el("div", "ann-body", item.text));
+        row.appendChild(el("div", "ann-when", personName(item.authorId) + " · " + clockMs(item.createdAtMs)));
         history.appendChild(row);
       });
     }
     if (retry) retry.hidden = !announcementOutgoing || !view.canPublish;
+    var typed = document.getElementById("ann-text");
     var send = document.getElementById("ann-send");
-    if (send) send.disabled = busy;
+    if (send) send.disabled = busy || !String(typed && typed.value || "").trim();
+  }
+
+  function mapIcon(kind) {
+    if (kind === "集合") return "📍";
+    if (kind === "主要目的地") return "🌿";
+    return "📌";
+  }
+
+  function fillRouteMap(host) {
+    if (!host) return;
+    clear(host);
+    trip.stops.forEach(function (stop, index) {
+      if (index > 0) host.appendChild(el("div", "route-join"));
+      var item = el("div", "route-node");
+      item.appendChild(el("div", "route-num", String(index + 1)));
+      item.appendChild(el("div", "route-label", stop.name));
+      host.appendChild(item);
+    });
+  }
+
+  function fillMapCards(host, items, numbered) {
+    clear(host);
+    items.forEach(function (item, index) {
+      var card = el("article", "card map-card");
+      var row = el("div", "map-row");
+      if (numbered) row.appendChild(el("div", "route-num", String(index + 1)));
+      row.appendChild(el("div", "map-icon", numbered ? mapIcon(item.kind) : "⛽"));
+      var body = el("div", "map-body");
+      body.appendChild(el("p", "section-label", numbered ? item.kind : "規劃候選"));
+      body.appendChild(el("p", "map-place", item.name));
+      body.appendChild(el("p", "map-desc", numbered ? "路線確認中" : "規劃候選 · 路線確認中"));
+      body.appendChild(el("p", "map-note", placeStatus(item)));
+      var button = el("button", "map-nav", "🧭 路線確認中");
+      button.type = "button";
+      button.disabled = true;
+      body.appendChild(button);
+      row.appendChild(body);
+      card.appendChild(row);
+      host.appendChild(card);
+    });
   }
 
   function renderTripLists() {
     var route = document.getElementById("route-list");
-    var legs = document.getElementById("leg-list");
     var fuels = document.getElementById("fuel-list");
     var plan = document.getElementById("plan-list");
     var reviewPlan = document.getElementById("review-plan");
-    [route, plan, reviewPlan].forEach(function (list) {
-      if (!list) return;
-      clear(list);
+    fillRouteMap(document.getElementById("route-map"));
+    if (route) fillMapCards(route, trip.stops, true);
+    if (reviewPlan) {
+      clear(reviewPlan);
       trip.stops.forEach(function (stop, index) {
         var row = el("li");
         row.appendChild(el("div", "stop-name", (index + 1) + ". " + stop.name));
         row.appendChild(el("div", "stop-kind", stop.kind));
         row.appendChild(el("p", "stop-status", placeStatus(stop)));
-        list.appendChild(row);
+        reviewPlan.appendChild(row);
       });
+    }
+    if (plan) {
+      clear(plan);
+      trip.stops.forEach(function (stop) {
+        var row = el("li", "plan-stop");
+        row.appendChild(el("div", "plan-mark", "⚪"));
+        var meta = el("div", "plan-meta");
+        meta.appendChild(el("div", "plan-kicker", "預定"));
+        meta.appendChild(el("div", "plan-kind", stop.kind));
+        var body = el("div", "plan-body");
+        body.appendChild(el("div", "plan-name", stop.name));
+        body.appendChild(el("div", "plan-note", placeStatus(stop)));
+        row.appendChild(meta);
+        row.appendChild(body);
+        plan.appendChild(row);
+      });
+    }
+    if (fuels) fillMapCards(fuels, trip.fuelCandidates || [], false);
+  }
+
+  function badgeOn(key) {
+    var people = family();
+    if (key === "allGather") return people.length === 9 && countKind("depart") === 9;
+    if (key === "allHome") return people.length === 9 && countKind("home") === 9;
+    return false;
+  }
+
+  function renderBadges() {
+    var host = document.getElementById("badge-grid");
+    if (!host) return;
+    clear(host);
+    [
+      ["allGather", "🎉", "全員到齊", "九位家人都有出發報到才點亮。"],
+      ["together", "❤️", "全家一起出發", "原版要旅程進度。這次沒有這項資料，先不解鎖。"],
+      ["firstStop", "🏍️", "第一站抵達", "原版要站點進度。這次沒有座標，先不解鎖。"],
+      ["photo", "📸", "家族合照", "原版要合照任務。這次沒有這項資料，先不解鎖。"],
+      ["food", "🍜", "今日美食", "原版要美食任務。這次沒有這項資料，先不解鎖。"],
+      ["dayComplete", "🌄", "今日旅程完成", "原版要當日完成任務。這次沒有這項資料，先不解鎖。"],
+      ["safeArrival", "🏠", "平安投宿", "原版要住宿任務。這次沒有這項資料，先不解鎖。"],
+      ["allHome", "🌙", "全員到家", "九位家人都有到家報到才點亮。"],
+      ["star", "⭐", "今日之星", "原版要里程之星。拼圖冠軍不在這裡公布，先不解鎖。"]
+    ].forEach(function (item) {
+      var on = badgeOn(item[0]);
+      var node = el("div", on ? "badge is-on" : "badge");
+      node.appendChild(el("div", "badge-icon", item[1]));
+      node.appendChild(el("div", "badge-label", item[2]));
+      node.appendChild(el("span", "badge-note", item[3]));
+      host.appendChild(node);
     });
-    if (legs) {
-      clear(legs);
-      var i;
-      for (i = 0; i < trip.stops.length - 1; i += 1) {
-        var from = trip.stops[i];
-        var to = trip.stops[i + 1];
-        var card = el("li", "leg");
-        card.appendChild(el("div", "stop-name", from.name + " → " + to.name));
-        card.appendChild(el("p", "stop-status", "這一段只是規劃順序，不代表道路已經確認。"));
-        var button = el("button", "nav-wait", "地點未定稿，先不導航");
-        button.type = "button";
-        button.disabled = true;
-        card.appendChild(button);
-        legs.appendChild(card);
-      }
-    }
-    if (fuels) {
-      clear(fuels);
-      trip.fuelCandidates.forEach(function (item) {
-        var card = el("li", "leg");
-        card.appendChild(el("div", "stop-name", item.name));
-        card.appendChild(el("p", "stop-status", placeStatus(item)));
-        var button = el("button", "nav-wait", "地點未定稿，先不導航");
-        button.type = "button";
-        button.disabled = true;
-        card.appendChild(button);
-        fuels.appendChild(card);
-      });
-    }
   }
 
   function lineText(node) {
@@ -306,11 +449,20 @@
       if (!target || !source) return;
       clear(target);
       if (!source.children.length) {
-        target.appendChild(el("li", "stop-status", "尚無成績"));
+        target.appendChild(el("li", "empty", "還沒有成績"));
         return;
       }
       Array.prototype.forEach.call(source.children, function (item) {
-        target.appendChild(el("li", "", item.textContent));
+        var row = el("li", item.className);
+        if (!item.children.length) {
+          row.textContent = item.textContent;
+          target.appendChild(row);
+          return;
+        }
+        Array.prototype.forEach.call(item.children, function (child) {
+          row.appendChild(el("span", child.className, child.textContent));
+        });
+        target.appendChild(row);
       });
     });
   }
@@ -342,7 +494,12 @@
         });
       });
     }
+    var info = document.getElementById("checkin-info");
+    var checkinHint = document.getElementById("checkin-hint");
+    if (info) info.hidden = key !== "checkin";
+    if (checkinHint) checkinHint.hidden = key !== "checkin";
     if (key === "badge" || key === "review") renderMirrors();
+    if (key === "badge") renderBadges();
     try {
       window.dispatchEvent(new CustomEvent("danayigu-tab", { detail: { tab: key } }));
     } catch (err) { /* 沒有 CustomEvent 時，拼圖仍會在看得到的時候開始計時 */ }
@@ -357,12 +514,11 @@
 
   function rememberPuzzleTab() {
     setTimeout(function () {
-      if (/^#a=/.test(location.hash || "")) return;
       var url = new URL(location.href);
       url.searchParams.set("tab", "puzzle");
       url.searchParams.delete("a");
-      url.hash = "";
-      try { history.replaceState(null, "", url.pathname + url.search); } catch (err) { /* 保持目前畫面 */ }
+      var hash = /^#a=/.test(location.hash || "") ? location.hash : "";
+      try { history.replaceState(null, "", url.pathname + url.search + hash); } catch (err) { /* 保持目前畫面 */ }
     }, 0);
   }
 
@@ -468,7 +624,6 @@
     sync.sendMessage(who.id, body, key).then(function (data) {
       busy = false;
       if (!data || data.ok !== true) {
-        messageOutgoing = null;
         renderSays();
         setSayStatus(((data && data.error) || "沒有送出") + "。這則沒有發布。");
         return;
@@ -513,12 +668,12 @@
     sync.publish(body, key, who ? who.id : "").then(function (data) {
       busy = false;
       if (!data || data.ok !== true) {
-        announcementOutgoing = null;
         renderAnnouncements();
         setAnnStatus(((data && data.error) || "無法發布公告") + "。這則沒有發布。");
         return;
       }
       announcementOutgoing = null;
+      annFormOpen = false;
       var input = document.getElementById("ann-text");
       if (input) input.value = "";
       renderAnnouncements();
@@ -558,6 +713,7 @@
     renderCheckin();
     renderSays();
     renderAnnouncements();
+    renderBadges();
   }
 
   function bind() {
@@ -567,21 +723,15 @@
     document.getElementById("home-yes").addEventListener("click", confirmAsk);
     document.getElementById("depart-no").addEventListener("click", hideAsks);
     document.getElementById("home-no").addEventListener("click", hideAsks);
-    document.getElementById("phrase-grid").addEventListener("click", function (event) {
-      var button = event.target.closest("button");
-      if (!button) return;
-      if (button.dataset.phrase === "custom") {
-        customOpen = !customOpen;
-        button.classList.toggle("is-open", customOpen);
-        renderSays();
-        return;
-      }
-      if (!button.dataset.phrase) return;
-      sendText(button.dataset.phrase, false);
-    });
+    document.getElementById("say-text").addEventListener("input", renderSays);
     document.getElementById("say-send").addEventListener("click", function () {
       var input = document.getElementById("say-text");
-      sendText(input ? input.value : "", false);
+      var body = input ? input.value : "";
+      if (messageOutgoing && String(body || "").trim() === messageOutgoing.text) {
+        sendText(messageOutgoing.text, true);
+        return;
+      }
+      sendText(body, false);
     });
     document.getElementById("say-retry").addEventListener("click", function () {
       if (!messageOutgoing) return;
@@ -591,9 +741,29 @@
       historyOpen = !historyOpen;
       renderAnnouncements();
     });
+    document.getElementById("ann-open").addEventListener("click", function () {
+      if (!view.canPublish || busy) return;
+      annFormOpen = true;
+      renderAnnouncements();
+    });
+    document.getElementById("ann-cancel").addEventListener("click", function () {
+      if (busy) return;
+      annFormOpen = false;
+      if (!announcementOutgoing) {
+        var input = document.getElementById("ann-text");
+        if (input) input.value = "";
+      }
+      renderAnnouncements();
+    });
+    document.getElementById("ann-text").addEventListener("input", renderAnnouncements);
     document.getElementById("ann-send").addEventListener("click", function () {
       var input = document.getElementById("ann-text");
-      publishText(input ? input.value : "", false);
+      var body = input ? input.value : "";
+      if (announcementOutgoing && String(body || "").trim() === announcementOutgoing.text) {
+        publishText(announcementOutgoing.text, true);
+        return;
+      }
+      publishText(body, false);
     });
     document.getElementById("ann-retry").addEventListener("click", function () {
       if (!announcementOutgoing) return;
@@ -642,12 +812,21 @@
     (trip.quickPhrases || []).forEach(function (item) {
       var button = el("button", "", item.icon + " " + item.label);
       button.type = "button";
-      button.dataset.phrase = item.icon + " " + item.label;
+      var phrase = item.icon + " " + item.label;
+      button.dataset.phrase = phrase;
+      button.addEventListener("click", function () {
+        sendText(phrase, false);
+      });
       grid.appendChild(button);
     });
     var custom = el("button", "", "💬 發訊息");
     custom.type = "button";
-    custom.dataset.phrase = "custom";
+    custom.addEventListener("click", function () {
+      if (busy) return;
+      customOpen = !customOpen;
+      custom.classList.toggle("is-open", customOpen);
+      renderSays();
+    });
     grid.appendChild(custom);
   }
 
@@ -663,8 +842,16 @@
   if (tagline && trip.tagline) tagline.textContent = trip.tagline;
   if (meetPlace && trip.meeting) meetPlace.textContent = trip.meeting.place;
   if (meetTime && trip.meeting) meetTime.textContent = trip.meeting.timeText;
-  if (direction) direction.textContent = "方向：" + (trip.direction || "尚未確定") + "。下面只列出預定順序。";
+  if (direction) direction.textContent = "方向：" + (trip.direction || "尚未確定") + "。時間與道路都尚未定稿。";
   if (reference && trip.excludedReference) reference.textContent = trip.excludedReference;
+  var stageMeet = document.getElementById("journey-meet");
+  var stageTime = document.getElementById("journey-time");
+  var nextTime = document.getElementById("journey-next-time");
+  var nextPlace = document.getElementById("journey-next-place");
+  if (stageMeet && trip.meeting) stageMeet.textContent = "集合地點：" + trip.meeting.place;
+  if (stageTime && trip.meeting) stageTime.textContent = "集合時間：" + (trip.meeting.timeText || "尚未確定");
+  if (nextTime) nextTime.textContent = (trip.meeting && trip.meeting.timeText) || "尚未確定";
+  if (nextPlace && trip.stops && trip.stops[0]) nextPlace.textContent = "📍 " + trip.stops[0].name;
 
   fillPhrases();
   renderTripLists();
@@ -672,6 +859,7 @@
   renderSays();
   renderAnnouncements();
   renderMirrors();
+  renderBadges();
   bind();
 
   var adminHash = /^#a=/.test(location.hash || "");
@@ -686,6 +874,7 @@
         ? "現在選的是" + who.name + "。選名字不是登入。"
         : "請先在上方選擇你是誰。選名字不是登入。";
     }
+    renderSays();
     renderMirrors();
   }
   window.addEventListener("danayigu-who", syncIdentity);
