@@ -100,5 +100,5 @@ window.DANAYIGU_TRIP = {
 };
 (function (root) {
   if (!root || !root.DanayiguGuard) return;
-  root.DanayiguGuard.claim("trip-data.js", "6d2");
+  root.DanayiguGuard.claim("trip-data.js", "6d3");
 })(typeof window !== "undefined" ? window : null);

@@ -82,5 +82,5 @@
 });
 (function (root) {
   if (!root || !root.DanayiguGuard) return;
-  root.DanayiguGuard.claim("score.js", "6d2");
+  root.DanayiguGuard.claim("score.js", "6d3");
 })(typeof window !== "undefined" ? window : null);

@@ -414,37 +414,6 @@
     }
   }
 
-  function badgeOn(key) {
-    var people = family();
-    if (key === "allGather") return people.length === 9 && countKind("depart") === 9;
-    if (key === "allHome") return people.length === 9 && countKind("home") === 9;
-    return false;
-  }
-
-  function renderBadges() {
-    var host = document.getElementById("badge-grid");
-    if (!host) return;
-    clear(host);
-    [
-      ["allGather", "🎉", "全員到齊", "九位家人都有出發報到才點亮。"],
-      ["together", "❤️", "全家一起出發", "原版要旅程進度。這次沒有這項資料，先不解鎖。"],
-      ["firstStop", "🏍️", "第一站抵達", "原版要站點進度。這次沒有座標，先不解鎖。"],
-      ["photo", "📸", "家族合照", "原版要合照任務。這次沒有這項資料，先不解鎖。"],
-      ["food", "🍜", "今日美食", "原版要美食任務。這次沒有這項資料，先不解鎖。"],
-      ["dayComplete", "🌄", "今日旅程完成", "原版要當日完成任務。這次沒有這項資料，先不解鎖。"],
-      ["safeArrival", "🌿", "達娜伊谷達陣", "原版要住宿任務。這次沒有這項資料，先不解鎖。"],
-      ["allHome", "🌙", "全員到家", "九位家人都有到家報到才點亮。"],
-      ["star", "⭐", "今日之星", "原版要里程之星。拼圖冠軍不在這裡公布，先不解鎖。"]
-    ].forEach(function (item) {
-      var on = badgeOn(item[0]);
-      var node = el("div", on ? "badge is-on" : "badge");
-      node.appendChild(el("div", "badge-icon", item[1]));
-      node.appendChild(el("div", "badge-label", item[2]));
-      node.appendChild(el("span", "badge-note", item[3]));
-      host.appendChild(node);
-    });
-  }
-
   function lineText(node) {
     return node ? String(node.textContent || "").trim() : "";
   }
@@ -456,8 +425,8 @@
     var meta3 = lineText(document.getElementById("champ-3-meta"));
     var name4 = lineText(document.getElementById("champ-4-name"));
     var meta4 = lineText(document.getElementById("champ-4-meta"));
-    [["badge-champ-3", "review-champ-3", name3, meta3], ["badge-champ-4", "review-champ-4", name4, meta4]].forEach(function (slot) {
-      [slot[0], slot[1]].forEach(function (id) {
+    [["review-champ-3", name3, meta3], ["review-champ-4", name4, meta4]].forEach(function (slot) {
+      [slot[0]].forEach(function (id) {
         var node = document.getElementById(id);
         if (!node) return;
         clear(node);
@@ -465,8 +434,8 @@
           node.appendChild(el("p", "stop-status", "晚餐才公布。這裡跟著拼圖分頁的冠軍畫面，不會另外計算。"));
           return;
         }
-        node.appendChild(el("p", "champ-name", slot[2] || "本屆從缺"));
-        if (slot[3]) node.appendChild(el("p", "stop-status", slot[3]));
+        node.appendChild(el("p", "champ-name", slot[1] || "本屆從缺"));
+        if (slot[2]) node.appendChild(el("p", "stop-status", slot[2]));
       });
     });
     ["review-rank-3", "review-rank-4"].forEach(function (id, index) {
@@ -524,8 +493,7 @@
     var checkinHint = document.getElementById("checkin-hint");
     if (info) info.hidden = key !== "checkin";
     if (checkinHint) checkinHint.hidden = key !== "checkin";
-    if (key === "badge" || key === "review") renderMirrors();
-    if (key === "badge") renderBadges();
+    if (key === "review") renderMirrors();
     applyReviewGate();
     try {
       window.dispatchEvent(new CustomEvent("danayigu-tab", { detail: { tab: key } }));
@@ -543,7 +511,7 @@
     var focus = "";
     var hash = String(location.hash || "");
     try { focus = new URLSearchParams(location.search).get("focus") || ""; } catch (err) { focus = ""; }
-    if (hash === "#family-ann" || focus === "family-ann") return "family-ann";
+    if (hash === "#family-ann" || focus === "family-ann") return "family-say";
     if (hash === "#family-say" || focus === "family-say") return "family-say";
     return "";
   }
@@ -690,7 +658,18 @@
       if (input) input.value = "";
       customOpen = false;
       renderSays();
-      setSayStatus(data.duplicate ? "這次已經送出過，沒有再新增一則。" : "已送出。");
+      var opener = document.getElementById("say-open");
+      if (opener) {
+        opener.classList.remove("is-open");
+        opener.setAttribute("aria-expanded", "false");
+      }
+      var sentText = data.duplicate ? "這次已經送出過，沒有再新增一則。" : "已送出。";
+      if (!data.duplicate && data.push) {
+        if (data.push.skipped || data.push.failed || data.push.expired) sentText += "部分或全部手機通知未送達，訊息已保留。";
+        else if (data.push.success > 0) sentText += "手機通知已發送。";
+        else sentText += "目前沒有可接收的手機訂閱，訊息已保留。";
+      }
+      setSayStatus(sentText);
     }).catch(function () {
       busy = false;
       renderSays();
@@ -777,7 +756,6 @@
     renderCheckin();
     renderSays();
     renderAnnouncements();
-    renderBadges();
   }
 
   function bind() {
@@ -883,13 +861,19 @@
       });
       grid.appendChild(button);
     });
-    var custom = el("button", "", "💬 發訊息");
+    var custom = el("button", "say-primary", "💬 發訊息給大家");
+    custom.id = "say-open";
+    custom.setAttribute("aria-controls", "say-custom");
+    custom.setAttribute("aria-expanded", "false");
     custom.type = "button";
     custom.addEventListener("click", function () {
       if (busy) return;
       customOpen = !customOpen;
       custom.classList.toggle("is-open", customOpen);
+      custom.setAttribute("aria-expanded", customOpen ? "true" : "false");
       renderSays();
+      var input = document.getElementById("say-text");
+      if (customOpen && input && input.focus) input.focus();
     });
     grid.appendChild(custom);
   }
@@ -955,7 +939,7 @@
     if (body) body.hidden = !open;
   }
 
-  var SHELL_BUILD = "6d2";
+  var SHELL_BUILD = "6d3";
   var SHELL_NODES = ["who", "who-confirm", "ann-open", "depart-gauge", "home-gauge", "phrase-grid", "depart-button", "home-button", "depart-yes", "home-yes", "say-send", "ann-send", "submit-score", "close-confirm"];
 
   function pageBuild() {
@@ -1034,7 +1018,7 @@
   renderSays();
   renderAnnouncements();
   renderMirrors();
-  renderBadges();
+
   bind();
 
   var adminHash = /^#a=/.test(location.hash || "");

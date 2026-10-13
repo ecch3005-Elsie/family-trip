@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-build="6d2">
+<html lang="zh-Hant" data-build="6d3">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -708,6 +708,36 @@
   .tabbar button.is-active { color: #1F4A3D; }
   .tabbar button.is-active .tab-icon { opacity: 1; }
   .tabbar button.is-active .tab-label { font-weight: 800; }
+
+  #family-ann[hidden], #full-route[hidden] { display: none !important; }
+  .journey-card .phrase-grid .say-primary { grid-column: 1 / -1; min-height: 48px; background: var(--green); color: var(--paper); border-color: var(--green); font-size: calc(16px * var(--text)); }
+  .navigation-note { margin: 12px 16px 16px; padding: 12px 14px; border-left: 3px solid #4C8763; border-radius: 10px; background: #E7F0E4; color: #345448; font-size: calc(13px * var(--text)); line-height: 1.6; }
+  .navigation-note p { margin: 0; }
+  .navigation-note p + p { margin-top: 6px; }
+  .footprints-subtitle { margin: -6px 16px 16px; text-align: center; color: #8A7A5C; font-size: calc(14px * var(--text)); line-height: 1.6; }
+  .card.ride-memory { margin: 16px; padding: 20px; line-height: 1.7; overflow-wrap: anywhere; }
+  .ride-memory-complete { background: linear-gradient(155deg, #FFF8E4, #E7F0E4); border: 1px solid #B8CDAF; border-top: 5px solid #4C8763; }
+  .ride-memory-current { border: 1px solid #E8D5A0; border-top: 4px solid #E8B34A; }
+  .ride-memory-next { border: 1px dashed #C9BE9F; box-shadow: none; }
+  .ride-memory-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  .ride-number { color: var(--green); font-size: calc(13px * var(--text)); font-weight: 800; }
+  .ride-state { display: inline-block; padding: 3px 9px; border-radius: 999px; background: #DDEBDA; color: #1F4A3D; font-size: calc(12px * var(--text)); font-weight: 700; }
+  .ride-memory-current .ride-state { background: #FBF0D6; }
+  .ride-memory h3 { margin: 12px 0 4px; color: var(--green); font-size: calc(19px * var(--text)); line-height: 1.4; }
+  .ride-date { margin: 4px 0 12px; color: #8A7A5C; font-size: calc(13px * var(--text)); }
+  .ride-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; padding: 0; list-style: none; }
+  .ride-facts li { padding: 4px 9px; border-radius: 8px; background: #FFFFFFA6; font-size: calc(13px * var(--text)); font-weight: 700; }
+  .ride-distance { margin: 12px 0 4px; font-size: calc(14px * var(--text)); }
+  .ride-personal { color: #8A7A5C; font-size: calc(12px * var(--text)); }
+  .ride-route { margin-top: 16px; padding: 12px; background: #FFFFFF80; border-radius: 12px; font-size: calc(13px * var(--text)); }
+  .ride-route summary { cursor: pointer; min-height: 32px; font-weight: 700; }
+  .ride-route h4, .ride-story h4 { margin: 12px 0 6px; color: var(--green); }
+  .ride-route p { margin: 6px 0; }
+  .ride-story { margin-top: 18px; font-size: calc(14px * var(--text)); }
+  .ride-history-link { display: block; margin-top: 16px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; background: #1F4A3D; color: #FBF6EC; border-radius: 12px; text-align: center; text-decoration: none; font-size: calc(14px * var(--text)); font-weight: 700; }
+  .ride-photo { margin: 16px 0; }
+  .ride-photo img { display: block; width: 100%; max-width: 620px; height: auto; margin: 0 auto; border-radius: 12px; }
+  .ride-photo figcaption { margin-top: 7px; color: #8A7A5C; font-size: calc(12px * var(--text)); line-height: 1.6; text-align: center; }
 </style>
 <script src="../entry-preview/trips.js"></script>
 <script src="../entry-preview/entry.js"></script>
@@ -894,7 +924,7 @@
       <ul class="say-list" id="say-list"></ul>
       <p class="journey-sync" id="journey-banner" hidden></p>
     </article>
-    <article class="card journey-card" id="family-ann">
+    <article class="card journey-card" id="family-ann" hidden>
       <h2 class="ann-title">📣 家族公告</h2>
       <p class="fine" id="ann-note">大家都能看。只有管理者可以發布。</p>
       <div id="ann-latest"></div>
@@ -935,9 +965,11 @@
     <article class="card map-stage">
       <p class="map-confirm" id="map-date"></p>
       <div class="route-map" id="route-map"></div>
-      <p class="map-fuel-note" id="map-ride-note"></p>
-      <p class="map-note" id="full-route-note">完整路線尚未核對，請用每一段導航。</p>
-      <button type="button" class="map-nav" id="full-route" disabled>查看完整路線</button>
+      <aside class="navigation-note" aria-label="機車導航提醒">
+        <p id="map-ride-note"></p>
+        <p id="full-route-note">完整路線尚未核對，請用各站分段導航。</p>
+      </aside>
+      <button type="button" class="map-nav" id="full-route" disabled hidden>查看完整路線</button>
     </article>
     <div id="route-list"></div>
   </section>
@@ -1010,16 +1042,42 @@
   </section>
 
   <section id="panel-badge" class="panel" data-tab="badge" hidden>
-    <h2 class="page-title">🏆 旅程成就</h2>
-    <article class="card badge-card">
-      <div class="badge-grid" id="badge-grid"></div>
+    <h2 class="page-title">🛵 我們的騎旅足跡</h2>
+    <p class="footprints-subtitle">每一趟出發，都是家族的新故事。</p>
+    <article class="card ride-memory ride-memory-complete">
+      <div class="ride-memory-heading"><span class="ride-number">第 01 趟</span><span class="ride-state">已解鎖／旅程完成</span></div>
+      <h3>2026 雲林兩日機車小旅行</h3>
+      <p class="ride-date">2026/09/26～09/27</p>
+      <figure class="ride-photo ride-cover">
+        <img src="images/yunlin-riders.jpeg" width="1477" height="1108" alt="雲林機車旅行，戴著安全帽的家人在路邊合影" loading="eager" decoding="async">
+        <figcaption>一起出發，留下第一趟騎旅的合影。</figcaption>
+      </figure>
+      <ul class="ride-facts" aria-label="旅程紀錄"><li>9 人同行</li><li>2 天 1 夜</li><li>9/9 平安完成</li></ul>
+      <p class="ride-distance">Day 1 挑戰實測 <strong>139.2 km</strong>，15:03 抵達</p>
+      <p class="ride-personal">阿享個人全程碼表約 450 km，不可當作家族共同里程。</p>
+      <details class="ride-route"><summary>看看兩天的實際足跡</summary>
+        <h4>Day 1 實際足跡</h4><p>旗山早餐 → 台3線 → 甕缸雞 → 千巧谷（古坑店）→ 茗鎮民宿 → 華山會館</p>
+        <h4>Day 2 實際足跡</h4><p>茗鎮民宿 → 萬年峽谷（臨時加碼）→ 雲嶺之丘 → 五元兩角（意外經過）→ 山中美食館 → 草嶺下山 → 青殼仙草（下午茶）→ 永康 → 東悅坊慶功宴 → 台南解散 → 各組返家</p>
+      </details>
+      <div class="ride-story">
+        <h4>第一趟，雲林！</h4>
+        <p>九位家人、兩天一夜，從旗山出發，騎進雲林的山林與小鎮。一路有美食、有風景，也有臨時加碼的小驚喜。</p>
+        <p>第一天順利抵達茗鎮，第二天繼續挑戰草嶺山路。最珍貴的不是騎了多少公里，而是九個人一起出發，也一起平安完成了這趟旅程。</p>
+        <p>瓦特鎮家族的騎旅故事，從這裡開始。</p>
+      </div>
+      <figure class="ride-photo ride-landscape">
+        <img src="images/yunlin-valley.jpeg" width="1774" height="2364" alt="雲林旅行途中，綠色山谷與岩壁間的溪流" loading="lazy" decoding="async">
+        <figcaption>山谷裡的風景，也是我們一起走過的故事。</figcaption>
+      </figure>
+      <a class="ride-history-link" href="../yunlin/">📖 回到雲林旅程</a>
     </article>
-    <article class="card">
-      <h2>🧩 拼圖雙冠軍</h2>
-      <h3 class="section-label">3×3 歡樂拼圖王</h3>
-      <div id="badge-champ-3"></div>
-      <h3 class="section-label">4×4 終極拼圖王</h3>
-      <div id="badge-champ-4"></div>
+    <article class="card ride-memory ride-memory-current">
+      <div class="ride-memory-heading"><span class="ride-number">第 02 趟</span><span class="ride-state">解鎖中</span></div>
+      <h3>達娜伊谷</h3><p class="ride-date">2026/12/26</p>
+      <p>第二次家族機車旅行，即將展開。</p>
+    </article>
+    <article class="card ride-memory ride-memory-next">
+      <span class="ride-number">第 03 趟</span><h3>下一站</h3><p>下一站，敬請期待</p>
     </article>
   </section>
 
@@ -1083,22 +1141,22 @@
     </div>
   </form>
 </dialog>
-<script src="guard.js?build=6d2"></script>
-<script src="score.js?build=6d2"></script>
-<script src="config.js?build=6d2"></script>
-<script src="trip-data.js?build=6d2"></script>
-<script src="clock.js?build=6d2"></script>
-<script src="who.js?build=6d2"></script>
-<script src="checkin-view.js?build=6d2"></script>
-<script src="shell.js?build=6d2"></script>
+<script src="guard.js?build=6d3"></script>
+<script src="score.js?build=6d3"></script>
+<script src="config.js?build=6d3"></script>
+<script src="trip-data.js?build=6d3"></script>
+<script src="clock.js?build=6d3"></script>
+<script src="who.js?build=6d3"></script>
+<script src="checkin-view.js?build=6d3"></script>
+<script src="shell.js?build=6d3"></script>
 <script>
 (function () {
-  if (!window.DanayiguGuard || !DanayiguGuard.readyForPage("6d2") || !window.DanayiguScore || !window.DanayiguClock || !window.DANAYIGU_CONFIG || !window.DANAYIGU_TRIP || !window.DanayiguWho || !window.DanayiguCheckin) {
+  if (!window.DanayiguGuard || !DanayiguGuard.readyForPage("6d3") || !window.DanayiguScore || !window.DanayiguClock || !window.DANAYIGU_CONFIG || !window.DANAYIGU_TRIP || !window.DanayiguWho || !window.DanayiguCheckin) {
     if (window.DanayiguGuard) DanayiguGuard.fail("page");
     if (window.DanayiguShowReload) DanayiguShowReload();
     return;
   }
-  DanayiguGuard.claim("page", "6d2");
+  DanayiguGuard.claim("page", "6d3");
   var adminToken = "";
   try { sessionStorage.removeItem("danayigu-admin-link"); } catch (err) { /* 舊版暫存清不掉時，這個頁面也不會再讀它 */ }
   consumeAdminFragment();
@@ -2104,7 +2162,7 @@
   }
 
   function paintPush(status, button) {
-    if (status === "subscribed") pushNote("手機通知已開好，不用再訂一次。", false);
+    if (status === "subscribed") pushNote("", false);
     else if (status === "ios-hint") pushNote("iPhone 請用主畫面圖示打開，才能接收通知。", false);
     else if (status === "denied") pushNote("通知目前是關閉的。請到系統設定允許這個主畫面圖示。", false);
     else if (status === "idle") pushNote("這支手機還沒開啟通知。", true);
