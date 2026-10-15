@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-build="6d3">
+<html lang="zh-Hant" data-build="6d4">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -1141,22 +1141,24 @@
     </div>
   </form>
 </dialog>
-<script src="guard.js?build=6d3"></script>
-<script src="score.js?build=6d3"></script>
-<script src="config.js?build=6d3"></script>
-<script src="trip-data.js?build=6d3"></script>
-<script src="clock.js?build=6d3"></script>
-<script src="who.js?build=6d3"></script>
-<script src="checkin-view.js?build=6d3"></script>
-<script src="shell.js?build=6d3"></script>
+<script src="guard.js?build=6d4"></script>
+<script src="score.js?build=6d4"></script>
+<script src="config.js?build=6d4"></script>
+<script src="trip-data.js?build=6d4"></script>
+<script src="clock.js?build=6d4"></script>
+<script src="who.js?build=6d4"></script>
+<script src="checkin-view.js?build=6d4"></script>
+<script src="shell.js?build=6d4"></script>
+<script src="puzzle-photos.js?build=6d4"></script>
+<script src="puzzle-image.js?build=6d4"></script>
 <script>
 (function () {
-  if (!window.DanayiguGuard || !DanayiguGuard.readyForPage("6d3") || !window.DanayiguScore || !window.DanayiguClock || !window.DANAYIGU_CONFIG || !window.DANAYIGU_TRIP || !window.DanayiguWho || !window.DanayiguCheckin) {
+  if (!window.DanayiguGuard || !DanayiguGuard.readyForPage("6d4") || !window.DanayiguScore || !window.DanayiguClock || !window.DANAYIGU_CONFIG || !window.DANAYIGU_TRIP || !window.DanayiguWho || !window.DanayiguCheckin) {
     if (window.DanayiguGuard) DanayiguGuard.fail("page");
     if (window.DanayiguShowReload) DanayiguShowReload();
     return;
   }
-  DanayiguGuard.claim("page", "6d3");
+  DanayiguGuard.claim("page", "6d4");
   var adminToken = "";
   try { sessionStorage.removeItem("danayigu-admin-link"); } catch (err) { /* 舊版暫存清不掉時，這個頁面也不會再讀它 */ }
   consumeAdminFragment();
@@ -1633,6 +1635,30 @@
   }
 
   function newGame(n) {
+    if (!state.ready) return;
+    state.ready = false;
+    state.roundToken += 1;
+    state.pending = null;
+    if (state.timer) clearInterval(state.timer);
+    state.timer = 0;
+    window.DanayiguClock.reset(timing);
+    if (original.open) original.close();
+    board.hidden = true;
+    done.hidden = true;
+    setHint();
+    var photos = window.DANAYIGU_PUZZLE_PHOTOS;
+    var selected = window.DanayiguPuzzleImage.pick(photos);
+    window.DanayiguPuzzleImage.prepare(selected).then(function (cropped) {
+      currentSrc = cropped;
+      state.ready = true;
+      startRound(n);
+    }).catch(function () {
+      state.ready = true;
+      hint.textContent = "照片載入失敗，請按重新開始再試一次";
+    });
+  }
+
+  function startRound(n) {
     if (!state.ready) return;
     if (original.open) original.close();
     state.roundToken += 1;

@@ -116,5 +116,5 @@
 });
 (function (root) {
   if (!root || !root.DanayiguGuard) return;
-  root.DanayiguGuard.claim("who.js", "6d3");
+  root.DanayiguGuard.claim("who.js", "6d4");
 })(typeof window !== "undefined" ? window : null);

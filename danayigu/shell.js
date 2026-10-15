@@ -939,7 +939,7 @@
     if (body) body.hidden = !open;
   }
 
-  var SHELL_BUILD = "6d3";
+  var SHELL_BUILD = "6d4";
   var SHELL_NODES = ["who", "who-confirm", "ann-open", "depart-gauge", "home-gauge", "phrase-grid", "depart-button", "home-button", "depart-yes", "home-yes", "say-send", "ann-send", "submit-score", "close-confirm"];
 
   function pageBuild() {

@@ -95,10 +95,11 @@ window.DANAYIGU_TRIP = {
     { key: "rest", icon: "😴", label: "想休息一下" },
     { key: "photo", icon: "📸", label: "想停下來拍照" },
     { key: "drink", icon: "🥤", label: "想買飲料" },
-    { key: "wake", icon: "🐔", label: "起床…咕咕咕" }
+    { key: "wake", icon: "🐔", label: "起床…咕咕咕" },
+    { key: "slow", icon: "🐢", label: "騎慢點，等我～～～" }
   ]
 };
 (function (root) {
   if (!root || !root.DanayiguGuard) return;
-  root.DanayiguGuard.claim("trip-data.js", "6d3");
+  root.DanayiguGuard.claim("trip-data.js", "6d4");
 })(typeof window !== "undefined" ? window : null);

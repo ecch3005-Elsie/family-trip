@@ -1,0 +1,2 @@
+/* Replace this list to switch photo batches. */
+window.DANAYIGU_PUZZLE_PHOTOS = ["images/puzzle-batch-01/puzzle_01.png", "images/puzzle-batch-01/puzzle_02.png", "images/puzzle-batch-01/puzzle_03.png", "images/puzzle-batch-01/puzzle_04.png", "images/puzzle-batch-01/puzzle_05.png", "images/puzzle-batch-01/puzzle_06.png", "images/puzzle-batch-01/puzzle_07.png", "images/puzzle-batch-01/puzzle_08.png", "images/puzzle-batch-01/puzzle_09.png", "images/puzzle-batch-01/puzzle_10.png"];
