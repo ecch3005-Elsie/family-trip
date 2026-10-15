@@ -861,7 +861,11 @@
       });
       grid.appendChild(button);
     });
-    var custom = el("button", "say-primary", "💬 發訊息給大家");
+    var custom = el("button", "say-primary", "");
+    var redIcon = el("span", "say-red-icon", "");
+    redIcon.setAttribute("aria-hidden", "true");
+    custom.appendChild(redIcon);
+    custom.appendChild(el("span", "say-primary-label", "發訊息給大家"));
     custom.id = "say-open";
     custom.setAttribute("aria-controls", "say-custom");
     custom.setAttribute("aria-expanded", "false");
