@@ -330,12 +330,12 @@
     box-shadow: 0 8px 20px rgba(31, 74, 61, 0.18);
   }
   #checkin-info .place-name { margin-top: 2px; font-size: calc(17px * var(--text)); font-weight: 700; }
-  .npc-task-card { margin: 16px 16px 0; padding: 16px; text-align: center; }
-  .npc-task-card h2 { margin: 0 0 8px; color: #1F4A3D; font-size: calc(17px * var(--text)); }
+  .npc-task-card { margin: 16px 16px 0; padding: 0; text-align: center; }
+  .npc-card-title { display: block; margin: 0 0 8px; color: #1F4A3D; font-size: calc(17px * var(--text)); }
   .npc-task-open { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; min-height: 48px; margin: 0; padding: 8px; border: 2px solid #D4BC80; border-radius: 16px; background: #FBF6EC; color: #1F4A3D; font: inherit; font-weight: 800; cursor: pointer; }
   .npc-task-open img { display: block; width: min(100%, 230px); height: auto; border-radius: 12px; }
-  .npc-task-prompt { font-size: calc(15px * var(--text)); line-height: 1.5; }
-  .npc-task-mark { position: absolute; top: 10px; right: max(12px, calc(50% - 125px)); width: 32px; height: 32px; border-radius: 50%; background: #FFE278; color: #8B4B00; box-shadow: 0 2px 4px #5C431833; font-size: 25px; line-height: 32px; animation: npc-task-float 2s ease-in-out infinite; pointer-events: none; }
+
+  .npc-task-mark { position: absolute; top: 58px; right: max(12px, calc(50% - 125px)); width: 32px; height: 32px; border-radius: 50%; background: #FFE278; color: #8B4B00; box-shadow: 0 2px 4px #5C431833; font-size: 25px; line-height: 32px; animation: npc-task-float 2s ease-in-out infinite; pointer-events: none; }
   @keyframes npc-task-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
   @media (prefers-reduced-motion: reduce) { .npc-task-mark { animation: none; } }
   .npc-task-open:focus-visible, .npc-task-dialog button:focus-visible { outline: 3px solid #E8B34A; outline-offset: 3px; }
@@ -346,8 +346,8 @@
   .npc-task-toolbar .npc-task-close { background: #1F4A3D; color: #FBF6EC; }
   .npc-task-content { padding: 16px; }
   .npc-task-content h2 { margin: 0 0 12px; color: #1F4A3D; font-size: calc(19px * var(--text)); line-height: 1.5; }
-  .npc-task-intro { display: flex; align-items: center; gap: 10px; }
-  .npc-task-intro img { flex: 0 0 auto; width: 92px; height: auto; border-radius: 12px; }
+  .npc-task-intro { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+  .npc-task-intro img { display: block; flex: 0 0 auto; width: min(100%, 300px); margin: 0 auto; height: auto; border-radius: 12px; }
   .npc-task-dialog p { margin: 0; font-size: calc(15px * var(--text)); line-height: 1.7; overflow-wrap: anywhere; }
   .npc-task-intro p { min-width: 0; }
   .npc-task-list { display: grid; gap: 10px; list-style: none; padding: 0; margin: 16px 0; }
@@ -356,6 +356,8 @@
   .npc-task-list .npc-task-portrait { display: block; width: 64px; height: auto; max-height: 96px; object-fit: contain; border-radius: 10px; }
   .npc-task-copy { min-width: 0; text-align: left; }
   .npc-task-copy h3, .npc-task-copy p { text-align: left; }
+  .npc-task-list .npc-task-with-sign { grid-template-columns: 112px minmax(0, 1fr); }
+  .npc-task-list .npc-task-sign { width: 112px; max-height: none; }
   .npc-task-ending { padding: 12px; border-radius: 14px; background: #E7F0E4; }
   .checkin-card { margin: 16px 16px 0; padding: 16px; }
   .checkin-card h2 { margin: 0 0 10px; font-size: calc(17px * var(--text)); font-weight: 800; }
@@ -931,11 +933,10 @@
       </div>
     </article>
     <section class="card npc-task-card" id="trip-tasks" aria-labelledby="trip-tasks-title">
-      <h2 id="trip-tasks-title">瓦特鎮 NPC 旅途任務</h2>
       <button type="button" class="npc-task-open" id="npc-task-open" aria-haspopup="dialog" aria-controls="npc-task-dialog" aria-label="點我看看旅途任務！">
+        <span class="npc-card-title" id="trip-tasks-title">🐢 瓦特鎮任務小隊長</span>
         <img src="images/npc-turtle/task-sign.png" width="430" height="370" alt="背著探險背包的金黃花紋小烏龜，扶著旅途任務木牌" />
         <span class="npc-task-mark" aria-hidden="true">!</span>
-        <span class="npc-task-prompt">點我看看旅途任務！</span>
       </button>
       <dialog class="npc-task-dialog" id="npc-task-dialog" aria-labelledby="npc-dialog-title">
         <div class="npc-task-toolbar">
@@ -945,13 +946,13 @@
         <div class="npc-task-content">
           <h2 id="npc-dialog-title">瓦特鎮旅途小任務</h2>
           <div class="npc-task-intro">
-            <img src="images/npc-turtle/explorer.png" width="352" height="292" alt="金黃色龜殼、背著背包的 3D 小烏龜探險家" />
+            <img src="images/npc-turtle/intro-mission.webp" width="974" height="803" alt="原圖最大隻的背包小烏龜與旅途任務！文字" />
             <p>🐢「嘿嘿～大家準備好了嗎？今天有五個拍照小任務，跟著我一起留下回憶吧！」</p>
           </div>
           <ol class="npc-task-list">
-            <li><img class="npc-task-portrait" src="images/npc-turtle/task-01.webp" width="352" height="292" alt="小烏龜背包探險家" /><div class="npc-task-copy"><h3>01｜🛵 全員機車大合照</h3><p>「欸欸～大家先別跑！人跟車都要入鏡啦！📸」</p></div></li>
+            <li class="npc-task-with-sign"><img class="npc-task-portrait npc-task-sign" src="images/npc-turtle/happy-departure.webp" width="410" height="370" alt="小烏龜與開心出發！木牌" /><div class="npc-task-copy"><h3>01｜🛵 全員機車大合照</h3><p>「欸欸～大家先別跑！人跟車都要入鏡啦！📸」</p></div></li>
             <li><img class="npc-task-portrait" src="images/npc-turtle/task-02.webp" width="340" height="260" alt="小烏龜開心大笑" /><div class="npc-task-copy"><h3>02｜🌄 今天最美的風景</h3><p>「哇～這裡不拍一下，太可惜了吧！😍」</p></div></li>
-            <li><img class="npc-task-portrait" src="images/npc-turtle/task-03.webp" width="338" height="242" alt="小烏龜回頭看風景" /><div class="npc-task-copy"><h3>03｜🌿 達娜伊谷到此一遊</h3><p>「都騎到這裡了，當然要拍一張證明有來啊！🤣」</p></div></li>
+            <li class="npc-task-with-sign"><img class="npc-task-portrait npc-task-sign" src="images/npc-turtle/more-missions.webp" width="428" height="390" alt="小烏龜與還有任務喔！木牌" /><div class="npc-task-copy"><h3>03｜🌿 達娜伊谷到此一遊</h3><p>「都騎到這裡了，當然要拍一張證明有來啊！🤣」</p></div></li>
             <li><img class="npc-task-portrait" src="images/npc-turtle/task-04.webp" width="340" height="196" alt="小烏龜笑著揮手" /><div class="npc-task-copy"><h3>04｜😂 笑一個！西瓜甜不甜？</h3><p>「來來來～西瓜甜不甜～～？大家一起喊『甜～～！』！📸🤣」</p></div></li>
             <li><img class="npc-task-portrait" src="images/npc-turtle/task-05.webp" width="309" height="209" alt="小烏龜好奇歪頭" /><div class="npc-task-copy"><h3>05｜💛 愛車今日寫真</h3><p>「今天車車辛苦了！來～幫它拍張帥照！😎」</p></div></li>
           </ol>
@@ -1217,7 +1218,7 @@
 <script src="who.js?build=6d4"></script>
 <script src="checkin-view.js?build=6d4"></script>
 <script src="shell.js?build=6d4"></script>
-<script src="npc-tasks.js?build=6d4-npc-v2"></script>
+<script src="npc-tasks.js?build=6d4-npc-final"></script>
 <script src="puzzle-photos.js?build=6d4"></script>
 <script src="puzzle-image.js?build=6d4"></script>
 <script>
