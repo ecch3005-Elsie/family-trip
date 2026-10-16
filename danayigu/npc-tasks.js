@@ -35,8 +35,10 @@
         oscillator.type = type || "sine";
         oscillator.frequency.setValueAtTime(from, now + start);
         oscillator.frequency.exponentialRampToValueAtTime(to, now + start + duration);
+        // Gentle attack and fuller body: louder than v1 without a sharp transient.
         gain.gain.setValueAtTime(0.0001, now + start);
-        gain.gain.exponentialRampToValueAtTime(volume, now + start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(volume, now + start + 0.025);
+        gain.gain.linearRampToValueAtTime(volume * 0.65, now + start + duration * 0.55);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
         oscillator.connect(gain);
         gain.connect(audio.destination);
@@ -50,12 +52,18 @@
         oscillator.stop(now + start + duration + 0.02);
       }
       if (kind === "open") {
-        tone(0, 0.16, 880, 880, 0.045, "triangle");
-        tone(0.16, 0.22, 1175, 1175, 0.035, "triangle");
-        tone(0.39, 0.08, 520, 850, 0.025);
-        tone(0.50, 0.09, 660, 1000, 0.022);
+        // Arrival: 1.35 seconds. Moderate pitches, peak voice gain capped at 0.16.
+        tone(0, 0.38, 523.25, 523.25, 0.14, "triangle");
+        tone(0.30, 0.38, 659.25, 659.25, 0.14, "triangle");
+        tone(0.60, 0.38, 783.99, 783.99, 0.15, "triangle");
+        tone(0.88, 0.45, 1046.5, 1046.5, 0.16, "triangle");
+        // One dialogue cue: 0.65 seconds, after arrival; never tied to scrolling.
+        tone(1.40, 0.14, 460, 720, 0.10);
+        tone(1.60, 0.14, 550, 850, 0.10);
+        tone(1.80, 0.23, 650, 980, 0.11);
       } else {
-        tone(0, 0.24, 700, 180, 0.025);
+        // Closing: 0.77 seconds. New gestures cancel all pending old voices.
+        tone(0, 0.75, 600, 160, 0.10);
       }
     } catch (ignore) { /* Audio is optional; the dialogue always works. */ }
   }

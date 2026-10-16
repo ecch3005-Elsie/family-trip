@@ -351,8 +351,11 @@
   .npc-task-dialog p { margin: 0; font-size: calc(15px * var(--text)); line-height: 1.7; overflow-wrap: anywhere; }
   .npc-task-intro p { min-width: 0; }
   .npc-task-list { display: grid; gap: 10px; list-style: none; padding: 0; margin: 16px 0; }
-  .npc-task-list li { padding: 12px; border: 1px solid #D4BC80; border-radius: 14px; background: #FFF9EA; }
+  .npc-task-list li { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 10px; padding: 12px; border: 1px solid #D4BC80; border-radius: 14px; background: #FFF9EA; }
   .npc-task-list h3 { margin: 0 0 7px; color: #1F4A3D; font-size: calc(16px * var(--text)); line-height: 1.5; overflow-wrap: anywhere; }
+  .npc-task-list .npc-task-portrait { display: block; width: 64px; height: auto; max-height: 96px; object-fit: contain; border-radius: 10px; }
+  .npc-task-copy { min-width: 0; text-align: left; }
+  .npc-task-copy h3, .npc-task-copy p { text-align: left; }
   .npc-task-ending { padding: 12px; border-radius: 14px; background: #E7F0E4; }
   .checkin-card { margin: 16px 16px 0; padding: 16px; }
   .checkin-card h2 { margin: 0 0 10px; font-size: calc(17px * var(--text)); font-weight: 800; }
@@ -946,11 +949,11 @@
             <p>🐢「嘿嘿～大家準備好了嗎？今天有五個拍照小任務，跟著我一起留下回憶吧！」</p>
           </div>
           <ol class="npc-task-list">
-            <li><h3>01｜🛵 全員機車大合照</h3><p>🐢「欸欸～大家先別跑！人跟車都要入鏡啦！📸」</p></li>
-            <li><h3>02｜🌄 今天最美的風景</h3><p>🐢「哇～這裡不拍一下，太可惜了吧！😍」</p></li>
-            <li><h3>03｜🌿 達娜伊谷到此一遊</h3><p>🐢「都騎到這裡了，當然要拍一張證明有來啊！🤣」</p></li>
-            <li><h3>04｜😂 笑一個！西瓜甜不甜？</h3><p>🐢「來來來～西瓜甜不甜～～？大家一起喊『甜～～！』！📸🤣」</p></li>
-            <li><h3>05｜💛 愛車今日寫真</h3><p>🐢「今天車車辛苦了！來～幫它拍張帥照！😎」</p></li>
+            <li><img class="npc-task-portrait" src="images/npc-turtle/task-01.webp" width="352" height="292" alt="小烏龜背包探險家" /><div class="npc-task-copy"><h3>01｜🛵 全員機車大合照</h3><p>「欸欸～大家先別跑！人跟車都要入鏡啦！📸」</p></div></li>
+            <li><img class="npc-task-portrait" src="images/npc-turtle/task-02.webp" width="340" height="260" alt="小烏龜開心大笑" /><div class="npc-task-copy"><h3>02｜🌄 今天最美的風景</h3><p>「哇～這裡不拍一下，太可惜了吧！😍」</p></div></li>
+            <li><img class="npc-task-portrait" src="images/npc-turtle/task-03.webp" width="338" height="242" alt="小烏龜回頭看風景" /><div class="npc-task-copy"><h3>03｜🌿 達娜伊谷到此一遊</h3><p>「都騎到這裡了，當然要拍一張證明有來啊！🤣」</p></div></li>
+            <li><img class="npc-task-portrait" src="images/npc-turtle/task-04.webp" width="340" height="196" alt="小烏龜笑著揮手" /><div class="npc-task-copy"><h3>04｜😂 笑一個！西瓜甜不甜？</h3><p>「來來來～西瓜甜不甜～～？大家一起喊『甜～～！』！📸🤣」</p></div></li>
+            <li><img class="npc-task-portrait" src="images/npc-turtle/task-05.webp" width="309" height="209" alt="小烏龜好奇歪頭" /><div class="npc-task-copy"><h3>05｜💛 愛車今日寫真</h3><p>「今天車車辛苦了！來～幫它拍張帥照！😎」</p></div></li>
           </ol>
           <p class="npc-task-ending">🐢「任務不用全部完成喔！開心出遊，平安回家才是最重要的！💛」</p>
         </div>
@@ -1214,7 +1217,7 @@
 <script src="who.js?build=6d4"></script>
 <script src="checkin-view.js?build=6d4"></script>
 <script src="shell.js?build=6d4"></script>
-<script src="npc-tasks.js?build=6d4"></script>
+<script src="npc-tasks.js?build=6d4-npc-v2"></script>
 <script src="puzzle-photos.js?build=6d4"></script>
 <script src="puzzle-image.js?build=6d4"></script>
 <script>
