@@ -330,14 +330,30 @@
     box-shadow: 0 8px 20px rgba(31, 74, 61, 0.18);
   }
   #checkin-info .place-name { margin-top: 2px; font-size: calc(17px * var(--text)); font-weight: 700; }
-  .trip-tasks { margin: 16px 16px 0; padding: 16px; }
-  .trip-tasks h2 { margin: 0 0 12px; color: #1F4A3D; font-size: calc(17px * var(--text)); font-weight: 800; }
-  .trip-task-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .trip-task { min-width: 0; padding: 12px 10px; border: 1px solid #DCD3B8; border-radius: 12px; background: #FBF6EC; }
-  .trip-task-main { grid-column: 1 / -1; background: #E7F0E4; border-color: #B8CDAF; }
-  .trip-task h3 { margin: 0 0 6px; color: #1F4A3D; font-size: calc(15px * var(--text)); line-height: 1.5; overflow-wrap: anywhere; }
-  .trip-task p { margin: 0; color: #5C5144; font-size: calc(13px * var(--text)); line-height: 1.6; overflow-wrap: anywhere; }
-  .trip-tasks .trip-task-footer { margin: 14px 0 0; color: #5C5144; font-size: calc(13px * var(--text)); line-height: 1.6; text-align: center; }
+  .npc-task-card { margin: 16px 16px 0; padding: 16px; text-align: center; }
+  .npc-task-card h2 { margin: 0 0 8px; color: #1F4A3D; font-size: calc(17px * var(--text)); }
+  .npc-task-open { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; min-height: 48px; margin: 0; padding: 8px; border: 2px solid #D4BC80; border-radius: 16px; background: #FBF6EC; color: #1F4A3D; font: inherit; font-weight: 800; cursor: pointer; }
+  .npc-task-open img { display: block; width: min(100%, 230px); height: auto; border-radius: 12px; }
+  .npc-task-prompt { font-size: calc(15px * var(--text)); line-height: 1.5; }
+  .npc-task-mark { position: absolute; top: 10px; right: max(12px, calc(50% - 125px)); width: 32px; height: 32px; border-radius: 50%; background: #FFE278; color: #8B4B00; box-shadow: 0 2px 4px #5C431833; font-size: 25px; line-height: 32px; animation: npc-task-float 2s ease-in-out infinite; pointer-events: none; }
+  @keyframes npc-task-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .npc-task-mark { animation: none; } }
+  .npc-task-open:focus-visible, .npc-task-dialog button:focus-visible { outline: 3px solid #E8B34A; outline-offset: 3px; }
+  .npc-task-dialog { width: calc(100% - 28px); max-width: 520px; max-height: 86vh; max-height: 86dvh; padding: 0; border: 3px solid #4C8763; border-radius: 20px; background: #FBF6EC; color: #26332C; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; box-shadow: 0 12px 48px #00000055; }
+  .npc-task-dialog::backdrop { background: #102D25B3; }
+  .npc-task-toolbar { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #DCD3B8; background: #E7F0E4; }
+  .npc-task-toolbar button { min-height: 44px; margin: 0; padding: 8px 12px; border: 1px solid #1F4A3D; border-radius: 12px; background: #FBF6EC; color: #1F4A3D; font: inherit; font-size: calc(14px * var(--text)); font-weight: 700; }
+  .npc-task-toolbar .npc-task-close { background: #1F4A3D; color: #FBF6EC; }
+  .npc-task-content { padding: 16px; }
+  .npc-task-content h2 { margin: 0 0 12px; color: #1F4A3D; font-size: calc(19px * var(--text)); line-height: 1.5; }
+  .npc-task-intro { display: flex; align-items: center; gap: 10px; }
+  .npc-task-intro img { flex: 0 0 auto; width: 92px; height: auto; border-radius: 12px; }
+  .npc-task-dialog p { margin: 0; font-size: calc(15px * var(--text)); line-height: 1.7; overflow-wrap: anywhere; }
+  .npc-task-intro p { min-width: 0; }
+  .npc-task-list { display: grid; gap: 10px; list-style: none; padding: 0; margin: 16px 0; }
+  .npc-task-list li { padding: 12px; border: 1px solid #D4BC80; border-radius: 14px; background: #FFF9EA; }
+  .npc-task-list h3 { margin: 0 0 7px; color: #1F4A3D; font-size: calc(16px * var(--text)); line-height: 1.5; overflow-wrap: anywhere; }
+  .npc-task-ending { padding: 12px; border-radius: 14px; background: #E7F0E4; }
   .checkin-card { margin: 16px 16px 0; padding: 16px; }
   .checkin-card h2 { margin: 0 0 10px; font-size: calc(17px * var(--text)); font-weight: 800; }
   .gauge { position: relative; width: 132px; height: 132px; margin: 0 auto; }
@@ -911,31 +927,34 @@
         <button type="button" class="text-link" id="depart-no">先不要</button>
       </div>
     </article>
-    <section class="card trip-tasks" id="trip-tasks" aria-labelledby="trip-tasks-title">
-      <h2 id="trip-tasks-title">📸 瓦特鎮旅途小任務</h2>
-      <div class="trip-task-grid">
-        <article class="trip-task trip-task-main">
-          <h3>🛵 全員機車大合照</h3>
-          <p>大家與愛車一起留下紀念！</p>
-        </article>
-        <article class="trip-task">
-          <h3>🌄 今天最美的風景</h3>
-          <p>拍下喜歡的沿途風景</p>
-        </article>
-        <article class="trip-task">
-          <h3>🌿 達娜伊谷到此一遊</h3>
-          <p>留下旅行紀念照</p>
-        </article>
-        <article class="trip-task">
-          <h3>😂 捕捉歡樂瞬間</h3>
-          <p>記錄自然開心的一刻</p>
-        </article>
-        <article class="trip-task">
-          <h3>💛 愛車今日寫真</h3>
-          <p>幫愛車拍張帥照</p>
-        </article>
-      </div>
-      <p class="trip-task-footer">開心出遊，留下回憶，平安回家 💛</p>
+    <section class="card npc-task-card" id="trip-tasks" aria-labelledby="trip-tasks-title">
+      <h2 id="trip-tasks-title">瓦特鎮 NPC 旅途任務</h2>
+      <button type="button" class="npc-task-open" id="npc-task-open" aria-haspopup="dialog" aria-controls="npc-task-dialog" aria-label="點我看看旅途任務！">
+        <img src="images/npc-turtle/task-sign.png" width="430" height="370" alt="背著探險背包的金黃花紋小烏龜，扶著旅途任務木牌" />
+        <span class="npc-task-mark" aria-hidden="true">!</span>
+        <span class="npc-task-prompt">點我看看旅途任務！</span>
+      </button>
+      <dialog class="npc-task-dialog" id="npc-task-dialog" aria-labelledby="npc-dialog-title">
+        <div class="npc-task-toolbar">
+          <button type="button" id="npc-task-sound" aria-pressed="true">音效：開</button>
+          <button type="button" class="npc-task-close" id="npc-task-close">關閉任務 ✕</button>
+        </div>
+        <div class="npc-task-content">
+          <h2 id="npc-dialog-title">瓦特鎮旅途小任務</h2>
+          <div class="npc-task-intro">
+            <img src="images/npc-turtle/explorer.png" width="352" height="292" alt="金黃色龜殼、背著背包的 3D 小烏龜探險家" />
+            <p>🐢「嘿嘿～大家準備好了嗎？今天有五個拍照小任務，跟著我一起留下回憶吧！」</p>
+          </div>
+          <ol class="npc-task-list">
+            <li><h3>01｜🛵 全員機車大合照</h3><p>🐢「欸欸～大家先別跑！人跟車都要入鏡啦！📸」</p></li>
+            <li><h3>02｜🌄 今天最美的風景</h3><p>🐢「哇～這裡不拍一下，太可惜了吧！😍」</p></li>
+            <li><h3>03｜🌿 達娜伊谷到此一遊</h3><p>🐢「都騎到這裡了，當然要拍一張證明有來啊！🤣」</p></li>
+            <li><h3>04｜😂 笑一個！西瓜甜不甜？</h3><p>🐢「來來來～西瓜甜不甜～～？大家一起喊『甜～～！』！📸🤣」</p></li>
+            <li><h3>05｜💛 愛車今日寫真</h3><p>🐢「今天車車辛苦了！來～幫它拍張帥照！😎」</p></li>
+          </ol>
+          <p class="npc-task-ending">🐢「任務不用全部完成喔！開心出遊，平安回家才是最重要的！💛」</p>
+        </div>
+      </dialog>
     </section>
     <article class="card checkin-card">
       <h2>🏠 到家報到</h2>
@@ -1195,6 +1214,7 @@
 <script src="who.js?build=6d4"></script>
 <script src="checkin-view.js?build=6d4"></script>
 <script src="shell.js?build=6d4"></script>
+<script src="npc-tasks.js?build=6d4"></script>
 <script src="puzzle-photos.js?build=6d4"></script>
 <script src="puzzle-image.js?build=6d4"></script>
 <script>
