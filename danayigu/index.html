@@ -330,6 +330,14 @@
     box-shadow: 0 8px 20px rgba(31, 74, 61, 0.18);
   }
   #checkin-info .place-name { margin-top: 2px; font-size: calc(17px * var(--text)); font-weight: 700; }
+  .trip-tasks { margin: 16px 16px 0; padding: 16px; }
+  .trip-tasks h2 { margin: 0 0 12px; color: #1F4A3D; font-size: calc(17px * var(--text)); font-weight: 800; }
+  .trip-task-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .trip-task { min-width: 0; padding: 12px 10px; border: 1px solid #DCD3B8; border-radius: 12px; background: #FBF6EC; }
+  .trip-task-main { grid-column: 1 / -1; background: #E7F0E4; border-color: #B8CDAF; }
+  .trip-task h3 { margin: 0 0 6px; color: #1F4A3D; font-size: calc(15px * var(--text)); line-height: 1.5; overflow-wrap: anywhere; }
+  .trip-task p { margin: 0; color: #5C5144; font-size: calc(13px * var(--text)); line-height: 1.6; overflow-wrap: anywhere; }
+  .trip-tasks .trip-task-footer { margin: 14px 0 0; color: #5C5144; font-size: calc(13px * var(--text)); line-height: 1.6; text-align: center; }
   .checkin-card { margin: 16px 16px 0; padding: 16px; }
   .checkin-card h2 { margin: 0 0 10px; font-size: calc(17px * var(--text)); font-weight: 800; }
   .gauge { position: relative; width: 132px; height: 132px; margin: 0 auto; }
@@ -903,6 +911,32 @@
         <button type="button" class="text-link" id="depart-no">先不要</button>
       </div>
     </article>
+    <section class="card trip-tasks" id="trip-tasks" aria-labelledby="trip-tasks-title">
+      <h2 id="trip-tasks-title">📸 瓦特鎮旅途小任務</h2>
+      <div class="trip-task-grid">
+        <article class="trip-task trip-task-main">
+          <h3>🛵 全員機車大合照</h3>
+          <p>大家與愛車一起留下紀念！</p>
+        </article>
+        <article class="trip-task">
+          <h3>🌄 今天最美的風景</h3>
+          <p>拍下喜歡的沿途風景</p>
+        </article>
+        <article class="trip-task">
+          <h3>🌿 達娜伊谷到此一遊</h3>
+          <p>留下旅行紀念照</p>
+        </article>
+        <article class="trip-task">
+          <h3>😂 捕捉歡樂瞬間</h3>
+          <p>記錄自然開心的一刻</p>
+        </article>
+        <article class="trip-task">
+          <h3>💛 愛車今日寫真</h3>
+          <p>幫愛車拍張帥照</p>
+        </article>
+      </div>
+      <p class="trip-task-footer">開心出遊，留下回憶，平安回家 💛</p>
+    </section>
     <article class="card checkin-card">
       <h2>🏠 到家報到</h2>
       <div id="home-gauge"></div>
